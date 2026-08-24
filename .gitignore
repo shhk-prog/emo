@@ -19,12 +19,8 @@ data/interim/*
 !data/interim/.gitkeep
 results/raw/*
 !results/raw/.gitkeep
-results/derived/*
-!results/derived/.gitkeep
-results/figures/*
-!results/figures/.gitkeep
-results/tables/*
-!results/tables/.gitkeep
+# Allow tracking of aggregated results, tables, and figures
+# as per AGENTS.md rule 9.1 (Git管理するもの: 集計表、論文用図表)
 
 # Logs and databases
 *.log
