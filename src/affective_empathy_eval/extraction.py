@@ -68,6 +68,28 @@ class MockRepresentationExtractor:
         manifest_manager.save()
         return manifests
 
+    def extract_representations_batch(
+        self,
+        requests: List[Dict[str, Any]],
+        output_dir: str,
+        manifest_manager: ManifestManager,
+        layers_to_extract: Optional[List[int]] = None
+    ) -> List[ExtractionManifest]:
+        all_manifests = []
+        for req in requests:
+            manifests = self.extract_representations(
+                request_id=req["request_id"],
+                stimulus_id=req["stimulus_id"],
+                condition=req["condition"],
+                stimulus_text=req["stimulus_text"],
+                full_prompt_text=req["full_prompt_text"],
+                output_dir=output_dir,
+                manifest_manager=manifest_manager,
+                layers_to_extract=layers_to_extract
+            )
+            all_manifests.extend(manifests)
+        return all_manifests
+
 
 class PyTorchRepresentationExtractor:
     """
@@ -164,8 +186,8 @@ class PyTorchRepresentationExtractor:
             device = next(self.model.parameters()).device
             inputs = {k: v.to(device) for k, v in inputs.items()}
             
+            import torch
             with torch.no_grad():
-                import torch
                 _ = self.model(**inputs)
                 
             input_ids = inputs["input_ids"][0].cpu().numpy()
@@ -233,4 +255,111 @@ class PyTorchRepresentationExtractor:
             return manifests
             
         finally:
+            self.remove_hooks()
+
+    def extract_representations_batch(
+        self,
+        requests: List[Dict[str, Any]],
+        output_dir: str,
+        manifest_manager: ManifestManager,
+        layers_to_extract: Optional[List[int]] = None
+    ) -> List[ExtractionManifest]:
+        
+        if not requests:
+            return []
+            
+        if layers_to_extract is None:
+            if hasattr(self.model.config, "num_hidden_layers"):
+                layers_to_extract = list(range(self.model.config.num_hidden_layers))
+            else:
+                raise ValueError("Must provide layers_to_extract if model config has no num_hidden_layers.")
+                
+        self._register_hooks(layers_to_extract)
+        os.makedirs(output_dir, exist_ok=True)
+        manifests = []
+        
+        # Setup tokenizer for left padding
+        original_padding_side = self.tokenizer.padding_side
+        self.tokenizer.padding_side = "left"
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            
+        full_prompts = [req["full_prompt_text"] for req in requests]
+        
+        try:
+            inputs = self.tokenizer(full_prompts, padding=True, return_tensors="pt")
+            device = next(self.model.parameters()).device
+            inputs = {k: v.to(device) for k, v in inputs.items()}
+            
+            import torch
+            with torch.no_grad():
+                _ = self.model(**inputs)
+                
+            input_ids_np = inputs["input_ids"].cpu().numpy()
+            attention_mask_np = inputs["attention_mask"].cpu().numpy()
+            
+            for i, req in enumerate(requests):
+                seq_len = input_ids_np.shape[1]
+                prompt_last_idx = seq_len - 1
+                first_generated_idx = prompt_last_idx
+                prompt_hash = str(hash(req["full_prompt_text"]))
+                
+                stimulus_offset_start = req.get("stimulus_offset_start")
+                stimulus_offset_end = req.get("stimulus_offset_end")
+                
+                if stimulus_offset_start is None or stimulus_offset_end is None:
+                    # Search within this specific sequence
+                    offsets = self._find_stimulus_token_offsets(input_ids_np[i], req["stimulus_text"])
+                    if offsets:
+                        stimulus_offset_start, stimulus_offset_end = offsets
+                    else:
+                        stimulus_offset_start = prompt_last_idx
+                        stimulus_offset_end = prompt_last_idx
+                
+                for layer_idx, act in self.activations.items():
+                    # act shape: (batch_size, seq_len, hidden_dim)
+                    prompt_last_tensor = act[i, prompt_last_idx, :]
+                    stimulus_last_tensor = act[i, stimulus_offset_end, :]
+                    
+                    if stimulus_offset_start <= stimulus_offset_end:
+                        stimulus_mean_tensor = np.mean(act[i, stimulus_offset_start:stimulus_offset_end+1, :], axis=0).astype(np.float16)
+                    else:
+                        stimulus_mean_tensor = stimulus_last_tensor
+                        
+                    first_gen_tensor = act[i, first_generated_idx, :]
+                    
+                    positions = {
+                        "prompt_last_token": (prompt_last_tensor, prompt_last_idx),
+                        "stimulus_last_token": (stimulus_last_tensor, stimulus_offset_end),
+                        "stimulus_mean_pool": (stimulus_mean_tensor, -1),
+                        "first_generated_token_input": (first_gen_tensor, first_generated_idx)
+                    }
+                    
+                    for pos_name, (tensor, offset) in positions.items():
+                        tensor_filename = f"{req['request_id']}_L{layer_idx}_{pos_name}.npy"
+                        tensor_path = os.path.join(output_dir, tensor_filename)
+                        
+                        np.save(tensor_path, tensor)
+                        
+                        manifest = ExtractionManifest(
+                            tensor_path=tensor_path,
+                            stimulus_id=req["stimulus_id"],
+                            condition=req["condition"],
+                            model_name=self.model_name,
+                            model_revision=self.model_revision,
+                            layer=layer_idx,
+                            extraction_position=pos_name,
+                            token_offset=offset,
+                            prompt_hash=prompt_hash,
+                            tensor_shape=list(tensor.shape),
+                            dtype="float16"
+                        )
+                        manifest_manager.add_manifest(manifest)
+                        manifests.append(manifest)
+                        
+            manifest_manager.save()
+            return manifests
+            
+        finally:
+            self.tokenizer.padding_side = original_padding_side
             self.remove_hooks()

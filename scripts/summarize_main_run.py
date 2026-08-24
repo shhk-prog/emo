@@ -8,7 +8,15 @@ def main():
     parser.add_argument("--run-id", type=str, required=True, help="Run ID of the main experiment.")
     args = parser.parse_args()
 
-    out_dir = os.path.join("results/derived/main", args.run_id)
+    import glob
+    matches = glob.glob(os.path.join("results/raw/*", args.run_id))
+    if not matches:
+        print(f"Error: Run directory not found for {args.run_id}")
+        return
+    run_dir = matches[0]
+    phase = os.path.basename(os.path.dirname(run_dir))
+    
+    out_dir = os.path.join("results/derived", phase, args.run_id)
     if not os.path.exists(out_dir):
         print(f"Error: Derived results directory not found: {out_dir}")
         return

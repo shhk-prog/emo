@@ -9,10 +9,12 @@ def main():
     parser.add_argument("--run-id", type=str, required=True, help="Run ID of the main experiment.")
     args = parser.parse_args()
 
-    run_dir = os.path.join("results/raw/main", args.run_id)
-    if not os.path.exists(run_dir):
-        print(f"Error: Run directory not found: {run_dir}")
+    import glob
+    matches = glob.glob(os.path.join("results/raw/*", args.run_id))
+    if not matches:
+        print(f"Error: Run directory not found: {args.run_id}")
         return
+    run_dir = matches[0]
 
     responses_path = os.path.join(run_dir, "responses.jsonl")
     reps_dir = os.path.join(run_dir, "representations")

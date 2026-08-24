@@ -48,3 +48,4 @@ inference:
   top_p: 1.0
   max_tokens: 64
   max_retries: 3
+  batch_size: 128

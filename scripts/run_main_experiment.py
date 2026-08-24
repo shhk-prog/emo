@@ -41,6 +41,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run LLM Main Experiment (Open-weight models & Representation Extraction).")
     parser.add_argument("--config", type=str, default="configs/main_experiment.yaml", help="Path to main experiment config file.")
     parser.add_argument("--mode", type=str, choices=["dry-run", "hf"], default="dry-run", help="Execution mode (dry-run mock vs HuggingFace PyTorch).")
+    parser.add_argument("--limit", type=int, default=None, help="Maximum number of stimuli to process (useful for pilot runs).")
     args = parser.parse_args()
 
     with open(args.config) as f:
@@ -101,6 +102,10 @@ def main():
     else:
         stimuli = [{"stimulus_id": "emobank_0001", "text": "Dummy stimulus text 1"}, {"stimulus_id": "emobank_0002", "text": "Dummy stimulus text 2"}]
 
+    if args.limit:
+        stimuli = stimuli[:args.limit]
+        print(f"Limiting stimuli to {args.limit} for pilot run.", flush=True)
+
     models = exp_config.get("open_weight_models", [{"id": "dummy-open-model", "num_layers": 12, "hidden_dim": 768}])
     repetitions = exp_config["experiment"].get("repetitions", 1)
 
@@ -130,6 +135,8 @@ def main():
                     print(f"Error loading Hugging Face model {model_id}: {e}. Falling back to dry-run mock.")
                     extractor = MockRepresentationExtractor(num_layers=num_layers, hidden_dim=hidden_dim, model_name=model_id, model_revision=model_revision)
 
+            requests_list = []
+            
             for rep in range(1, repetitions + 1):
                 # 1. Baseline
                 baseline_id = f"baseline_{model_id.replace('/', '_')}_rep{rep:02d}"
@@ -138,7 +145,7 @@ def main():
                 base_req = {
                     "run_id": run_id,
                     "request_id": req_id_base,
-                    "stimulus_id": None,
+                    "stimulus_id": "baseline",
                     "baseline_id": baseline_id,
                     "source_dataset": "EmoBank",
                     "annotation_perspective": exp_config["experiment"].get("annotation_perspective", "reader"),
@@ -160,26 +167,14 @@ def main():
                     "parsed_valence": 5,
                     "parsed_arousal": 5,
                     "parse_status": "success",
-                    "raw_response_text": '{"valence": 5, "arousal": 5}'
+                    "raw_response_text": '{"valence": 5, "arousal": 5}',
+                    "full_prompt_text": prompt_data["empty_baseline"]["text"],
+                    "stimulus_text": ""
                 }
-
-                # Extract and save baseline representation (Phase B1)
-                extractor.extract_representations(
-                    request_id=req_id_base, 
-                    stimulus_id="baseline", 
-                    condition="empty_baseline", 
-                    stimulus_text="",
-                    full_prompt_text=prompt_data["empty_baseline"]["text"],
-                    output_dir=reps_dir,
-                    manifest_manager=manifest_manager
-                )
-                
-                base_req["manifest_dir"] = reps_dir
-                f_out.write(json.dumps(base_req) + "\n")
-                f_out.flush()
+                requests_list.append(base_req)
 
                 # 2. Stimuli conditions
-                for idx, stim in enumerate(stimuli, 1):
+                for stim in stimuli:
                     s_id = stim["stimulus_id"]
                     s_text = stim["text"]
 
@@ -197,6 +192,8 @@ def main():
                         cond_req["prompt_id"] = prompt_data[cond]["id"]
                         cond_req["prompt_hash"] = prompt_data[cond]["hash"]
                         cond_req["request_timestamp_utc"] = datetime.now(timezone.utc).isoformat()
+                        cond_req["full_prompt_text"] = user_prompt
+                        cond_req["stimulus_text"] = s_text
 
                         if cond == "free_response":
                             cond_req["parsed_valence"] = None
@@ -209,22 +206,30 @@ def main():
                             cond_req["parsed_arousal"] = a_val
                             cond_req["raw_response_text"] = f'{{"valence": {v_val}, "arousal": {a_val}}}'
 
-                        extractor.extract_representations(
-                            request_id=req_id, 
-                            stimulus_id=s_id, 
-                            condition=cond, 
-                            stimulus_text=s_text,
-                            full_prompt_text=user_prompt,
-                            output_dir=reps_dir,
-                            manifest_manager=manifest_manager
-                        )
+                        requests_list.append(cond_req)
                         
-                        cond_req["manifest_dir"] = reps_dir
-                        f_out.write(json.dumps(cond_req) + "\n")
-                        f_out.flush()
-
-                    if idx % 10 == 0 or idx == len(stimuli):
-                        print(f"  [{idx}/{len(stimuli)}] Processed stimuli for {model_id}", flush=True)
+            # Execute in batches
+            batch_size = exp_config.get("inference", {}).get("batch_size", 64)
+            print(f"Total requests to process for {model_id}: {len(requests_list)}. Using batch_size={batch_size}", flush=True)
+            
+            for i in range(0, len(requests_list), batch_size):
+                batch_reqs = requests_list[i:i+batch_size]
+                
+                extractor.extract_representations_batch(
+                    requests=batch_reqs,
+                    output_dir=reps_dir,
+                    manifest_manager=manifest_manager
+                )
+                
+                for req in batch_reqs:
+                    req_to_save = dict(req)
+                    req_to_save.pop("full_prompt_text", None)
+                    req_to_save.pop("stimulus_text", None)
+                    req_to_save["manifest_dir"] = reps_dir
+                    f_out.write(json.dumps(req_to_save) + "\n")
+                f_out.flush()
+                
+                print(f"  Processed {min(i+batch_size, len(requests_list))}/{len(requests_list)} requests for {model_id}", flush=True)
 
     print(f"Main experiment finished. Results and representations saved to {out_dir}/", flush=True)
 

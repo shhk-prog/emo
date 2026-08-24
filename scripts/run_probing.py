@@ -102,8 +102,8 @@ def main():
         print(f"RSA metrics saved to {rsa_out_path}")
         return
 
-    # Real run processing logic (placeholder to be expanded in evaluation script)
-    matches = glob.glob(os.path.join("results/raw/main", args.run_id))
+    # Real run processing logic
+    matches = glob.glob(os.path.join("results/raw/*", args.run_id))
     if not matches:
         print(f"Error: Run directory for {args.run_id} not found.")
         return
