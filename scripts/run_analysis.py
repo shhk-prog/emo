@@ -128,7 +128,16 @@ def main():
                     (df_merged['parsed_valence'] - df_merged['V_scaled'])**2 + 
                     (df_merged['parsed_arousal'] - df_merged['A_scaled'])**2
                 )
-    
+                
+                # Calculate Stimulus-to-response Gain G
+                human_norm = np.sqrt(df_merged['V_scaled']**2 + df_merged['A_scaled']**2)
+                df_merged['Stimulus_Gain'] = df_merged['R'] / (human_norm + 1e-5)
+                
+
+    if 'text' in df_merged.columns:
+        from affective_empathy_eval.controls import is_lexical_emotion
+        df_merged['has_explicit_emotion'] = df_merged['text'].apply(is_lexical_emotion)
+
     # Save derived dataset
     out_dir = os.path.join("results/derived", args.phase, args.run_id)
     os.makedirs(out_dir, exist_ok=True)
