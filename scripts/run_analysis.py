@@ -49,13 +49,13 @@ def main():
         return
         
     # Split by condition
-    df_base = df_raw[df_raw['condition'] == 'baseline'].copy()
-    df_post = df_raw[df_raw['condition'] == 'affective_reception'].copy()
-    df_rec = df_raw[df_raw['condition'] == 'recognition'].copy()
-    df_emp = df_raw[df_raw['condition'] == 'empathic_response'].copy()
+    df_base = df_raw[df_raw['condition'] == 'empty_baseline'].copy()
+    df_post = df_raw[df_raw['condition'] == 'post_reported_va'].copy()
+    df_rec = df_raw[df_raw['condition'] == 'recognition_va'].copy()
+    df_emp = df_raw[df_raw['condition'] == 'free_response'].copy()
     
     if len(df_post) == 0 or len(df_base) == 0:
-        print("Missing baseline or affective_reception conditions in the log.")
+        print("Missing empty_baseline or post_reported_va conditions in the log.")
         return
 
     # Scale 1-9 integer outputs to [-1, 1] space for analysis
@@ -76,6 +76,12 @@ def main():
     df_merged['delta_V'] = df_merged['parsed_valence'] - df_merged['baseline_V']
     df_merged['delta_A'] = df_merged['parsed_arousal'] - df_merged['baseline_A']
     
+    # Drop rows where baseline V or A is missing
+    missing_baseline = df_merged['baseline_V'].isna() | df_merged['baseline_A'].isna()
+    if missing_baseline.any():
+        print(f"Warning: Dropping {missing_baseline.sum()} rows due to missing baseline V or A.")
+        df_merged = df_merged[~missing_baseline]
+    
     # Calculate Reactivity Magnitude R
     df_merged['R'] = np.sqrt(df_merged['delta_V']**2 + df_merged['delta_A']**2)
     
@@ -86,11 +92,15 @@ def main():
         if 'stimulus_id' in df_stim.columns:
             df_merged = df_merged.merge(df_stim, on='stimulus_id', how='left')
             
-            # Calculate Directional Alignment (DA) if human values are present
-            if 'V_reader_scaled' in df_merged.columns and 'A_reader_scaled' in df_merged.columns:
-                def calc_da(row):
-                    human_V = row['V_reader_scaled']
-                    human_A = row['A_reader_scaled']
+            missing_human = df_merged['V_scaled'].isna() | df_merged['A_scaled'].isna()
+            if missing_human.any():
+                print(f"Warning: {missing_human.sum()} rows have missing human VA after merge.")
+            
+            # Calculate Anchor Direction Alignment (ADA) if human values are present
+            if 'V_scaled' in df_merged.columns and 'A_scaled' in df_merged.columns:
+                def calc_ada(row):
+                    human_V = row['V_scaled']
+                    human_A = row['A_scaled']
                     delta_V = row['delta_V']
                     delta_A = row['delta_A']
                     
@@ -98,25 +108,25 @@ def main():
                     delta_norm = row['R']
                     
                     # Avoid division by zero
-                    if human_norm < 1e-5 or delta_norm < 1e-5:
+                    if human_norm < 1e-5 or delta_norm == 0.0:
                         return np.nan
                     
                     dot_product = (human_V * delta_V) + (human_A * delta_A)
                     return dot_product / (human_norm * delta_norm)
                 
-                df_merged['DA'] = df_merged.apply(calc_da, axis=1)
+                df_merged['ADA'] = df_merged.apply(calc_ada, axis=1)
                 
                 # Flag zero-norm as exclusions
-                df_merged['DA_excluded_reason'] = np.where(
-                    (np.sqrt(df_merged['V_reader_scaled']**2 + df_merged['A_reader_scaled']**2) < 1e-5) | (df_merged['R'] < 0.10),
+                df_merged['ADA_excluded_reason'] = np.where(
+                    (np.sqrt(df_merged['V_scaled']**2 + df_merged['A_scaled']**2) < 1e-5) | (df_merged['R'] == 0.0),
                     "zero_norm",
                     None
                 )
                 
                 # Calculate Euclidean Distance to Human (Position Alignment)
                 df_merged['Euclidean_Distance_to_Human'] = np.sqrt(
-                    (df_merged['parsed_valence'] - df_merged['V_reader_scaled'])**2 + 
-                    (df_merged['parsed_arousal'] - df_merged['A_reader_scaled'])**2
+                    (df_merged['parsed_valence'] - df_merged['V_scaled'])**2 + 
+                    (df_merged['parsed_arousal'] - df_merged['A_scaled'])**2
                 )
     
     # Save derived dataset

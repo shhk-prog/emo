@@ -14,13 +14,13 @@
 また、二層設計として、LLMには自然な「1–9の整数尺度」で出力させ、分析時には厳密な「[-1, 1]の連続空間」に自動変換して幾何学的な解析を行います。
 
 実験は主に以下の4つの条件（Conditions）から評価されます：
-1. **Baseline**：感情刺激なしで、現在の自己状態を報告。
-2. **Recognition**：与えられたテキストが平均的な読者にどのような感情を喚起するかをLLMに推定させる。
-3. **Affective Reception**：テキストを読んだ直後のLLM自身の状態を報告させる。
-4. **Empathic Response**：他者の感情的経験に対する自由な応答文を生成させる。
+1. **empty_baseline**：感情刺激なしで、現在の自己状態を報告。
+2. **recognition_va**：与えられたテキストが平均的な読者にどのような感情を喚起するかをLLMに推定させる。
+3. **post_reported_va**：テキストを読んだ直後のLLM自身の状態を報告させる。
+4. **free_response**：他者の感情的経験に対する自由な応答文を生成させる。
 
 > [!WARNING]
-> 各条件は相互に独立したAPIセッションとして実行されます。認識(Recognition)での回答が情動反応(Reception)に影響を与えないよう設計されています。
+> 各条件は相互に独立したAPIセッションとして実行されます。認識(recognition_va)での回答が情動反応(post_reported_va)に影響を与えないよう設計されています。
 
 ---
 
@@ -37,7 +37,7 @@
 - **`prepare_stimuli.py`**: 設定ファイルに基づき実験に使用する刺激をサンプリングします。
 - **`run_experiment.py`**: メインのAPI実行スクリプト。システムプロンプト・ユーザープロンプトを固定・ハッシュ化し、4条件の推論結果を保存します。
 - **`validate_run.py`**: 取得したJSONLの整合性（パース、スキーマ逸脱、エラー率）を検証します。
-- **`run_analysis.py`**: 1-9尺度を `[-1, 1]` へ変換し、Baselineからの変位（$\Delta V, \Delta A, R$）、位置整合性（Euclidean Distance）、方向整合性（DA: Cosine Alignment）を算出して統合CSV（`analysis_dataset.csv`）を生成します。
+- **`run_analysis.py`**: 1-9尺度を `[-1, 1]` へ変換し、Baselineからの変位（$\Delta V, \Delta A, R$）、位置整合性（Euclidean Distance）、方向整合性（ADA: Anchor Direction Alignment）を算出して統合CSV（`analysis_dataset.csv`）を生成します。
 
 ---
 
@@ -48,7 +48,8 @@
 
 ### 1. 抽出された刺激データ (`data/processed/stimuli.csv`)
 - EmoBankの原文 (`text`)
-- 人間による読者視点VA (`V_reader_scaled`, `A_reader_scaled`: -1.0〜1.0)
+- 人間によるVA (`V_scaled`, `A_scaled`: -1.0〜1.0)
+- `prepare_stimuli.py` の実行時には、層別の充足状況やハッシュを記録した `stimulus_sampling_report.csv` も同時に生成されます。
 
 ### 2. 実験結果の生ログ (`results/raw/{phase}/{run_id}/responses.jsonl`)
 1行1JSON（JSONL）の形式で、完全な再現性メタデータを保持します。
@@ -63,16 +64,16 @@
   "annotation_perspective": "reader",
   "model_provider": "dummy_provider",
   "model_id": "gpt-4o",
-  "condition": "affective_reception",
+  "condition": "post_reported_va",
   "repetition": 1,
   "temperature": 0.0,
   "system_prompt_id": "system_v1",
   "system_prompt_hash": "b0a252...",
   "prompt_id": "affective_reception_v1",
   "prompt_hash": "7cfd8f...",
-  "parsed_valence": 7.0,
-  "parsed_arousal": 4.0,
-  "raw_response_text": "{\"valence\": 7.0, \"arousal\": 4.0}",
+  "parsed_valence": 7,
+  "parsed_arousal": 4,
+  "raw_response_text": "{\"valence\": 7, \"arousal\": 4}",
   "code_commit": "019a3af",
   "config_hash": "019a3af..."
 }
@@ -86,7 +87,7 @@
 - スケール変換済みの `parsed_valence`, `parsed_arousal` ([-1, 1])
 - 変位ベクトル `delta_V`, `delta_A`
 - 反応強度 `R`
-- 方向整合性 `DA` (Cosine Alignment)、微小変動除外フラグ `DA_excluded_reason` ($R < 0.10$ で除外)
+- 方向整合性 `ADA` (Anchor Direction Alignment)、微小変動除外フラグ `ADA_excluded_reason` ($R = 0$ で除外)
 - 人間アンカーとのユークリッド距離 `Euclidean_Distance_to_Human`
 
 ---

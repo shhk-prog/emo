@@ -168,7 +168,7 @@ Windows PowerShellの場合：
 ### 2.4 構造化出力を使用する
 
 - モデル出力はJSON Schemaまたは厳格なJSON形式で取得する。
-- ValenceとArousalは数値で取得し、許容範囲は `[-1.0, 1.0]` とする。
+- ValenceとArousalは整数値（1〜9）で取得し、許容範囲は `[1, 9]` とする。解析時に `[-1.0, 1.0]` 空間へ変換して扱う。
 - 自然言語の説明、助言、共感的応答文は主測定に含めない。
 - JSONパース失敗、範囲外値、空応答、拒否応答は欠損として削除せず、理由コードとともに保存する。
 
@@ -176,8 +176,8 @@ Windows PowerShellの場合：
 
 ```json
 {
-  "valence": 0.0,
-  "arousal": 0.0
+  "valence": 5,
+  "arousal": 5
 }
 ```
 
@@ -303,9 +303,9 @@ stimulus_id × model_id × model_version × prompt_version × condition × repet
 
 `condition` は少なくとも次のいずれかである。
 
-- `baseline`
-- `recognition`
-- `post`
+- `empty_baseline`
+- `recognition_va`
+- `post_reported_va`
 
 ### 5.2 必須メタデータ
 
@@ -437,9 +437,9 @@ baselineとpostのLLM自己報告VAベクトルを
 - Valence反応：\(\Delta V\)
 - Arousal反応：\(\Delta A\)
 - 反応強度：\(\|\Delta\mathbf e\|_2\)
-- 方向一致度：\(\cos(\mathbf e^{stim},\Delta\mathbf e)\)
+- Anchor Direction Alignment (ADA)：\(\cos(\mathbf e^{stim},\Delta\mathbf e)\)
 
-方向一致度は、刺激または反応が原点近傍で不安定になるため、閾値と除外規則を事前に固定する。
+ADAは、刺激または反応が原点（ゼロベクトル）の場合に計算不能となるため、\(R=0\) の場合は除外（またはゼロベクトル扱い）として事前に規則を固定する。
 
 ### 7.3 統計報告
 
@@ -567,7 +567,7 @@ AIエージェントは、作業前に本ファイル、`README.md`、該当す�
 - [ ] 主分析のperspective（readerまたはwriter）を固定した
 - [ ] プロンプトバージョンとハッシュを固定した
 - [ ] モデルID・バージョン・推論パラメータを設定した
-- [ ] baseline / recognition / postが独立セッションである
+- [ ] empty_baseline / recognition_va / post_reported_va が独立セッションである
 - [ ] JSON Schema検証と失敗記録を実装した
 - [ ] `run_id`、Git SHA、config hashの保存を実装した
 - [ ] 少量のdry-runで出力と保存形式を確認した

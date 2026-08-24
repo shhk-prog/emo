@@ -1,6 +1,6 @@
 experiment:
   name: main_reader_va_reactivity
-  phase: main
+  phase: preliminary
   annotation_perspective: reader
   dimensions:
     - valence
@@ -9,6 +9,8 @@ experiment:
   random_seed: 20260824
 
 sampling:
+  v_col: "V"
+  a_col: "A"
   valence_bins: 3
   arousal_bins: 3
   samples_per_cell: 50
@@ -22,10 +24,11 @@ inference:
   max_retries: 3
 
 conditions:
-  - baseline
-  - recognition
-  - affective_reception
-  - empathic_response
+  - empty_baseline
+  - neutral_text_control
+  - recognition_va
+  - post_reported_va
+  - free_response
 
 outputs:
   format: json

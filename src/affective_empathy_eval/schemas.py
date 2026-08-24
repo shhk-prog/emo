@@ -3,8 +3,12 @@ from pydantic import BaseModel, Field, ValidationError
 
 class AffectiveState(BaseModel):
     """Schema for parsing the self-reported affective state."""
-    valence: float = Field(..., ge=1.0, le=9.0, description="Valence score")
-    arousal: float = Field(..., ge=1.0, le=9.0, description="Arousal score")
+    valence: int = Field(..., ge=1, le=9, description="Valence score (1-9)")
+    arousal: int = Field(..., ge=1, le=9, description="Arousal score (1-9)")
+
+    model_config = {
+        "extra": "forbid"
+    }
 
 def parse_affective_state(response_text: str) -> dict:
     """

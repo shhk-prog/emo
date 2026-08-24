@@ -1,18 +1,34 @@
 models:
   - id: gpt-4o
     provider: openai
-    model_name: "TO_BE_CONFIRMED"
+    api_model: gpt-4o
+    family: gpt
+    access: openai_api
+    phase: preliminary
+    role: primary
     enabled: true
-    role: commercial_api
+  
+  - id: gpt-4o-mini
+    provider: openai
+    api_model: gpt-4o-mini
+    family: gpt
+    access: openai_api
+    phase: preliminary
+    role: cost_matched
+    enabled: true
 
   - id: claude-3-5-sonnet
     provider: anthropic
-    model_name: "TO_BE_CONFIRMED"
-    enabled: true
-    role: commercial_api
-
-  - id: llama-3-8b-instruct
-    provider: local
-    model_name: "TO_BE_CONFIRMED"
+    access: anthropic_api
+    phase: external_validation
+    role: external_comparator
     enabled: false
-    role: open_weight_instruct
+    exclusion_reason: "Excluded by preregistered OpenAI-only API policy"
+
+  - id: llama-3.1-8b-instruct
+    provider: meta
+    access: local
+    phase: main
+    role: mechanistic_analysis
+    enabled: false
+    exclusion_reason: "Reserved for local open-weight internal-state experiments"
