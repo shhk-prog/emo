@@ -11,14 +11,16 @@
 ## 概要 (What we are looking at)
 
 本実験では、LLMの「感情認識精度」や「共感的な文章生成」を測るのではなく、**「人間が評価した刺激感情に応じて生じるLLMの自己報告VA状態の変位（反応性）」**を行動的代理指標として測定します。
+また、二層設計として、LLMには自然な「1–9の整数尺度」で出力させ、分析時には厳密な「[-1, 1]の連続空間」に自動変換して幾何学的な解析を行います。
 
-実験は主に以下の2つの側面から評価されます：
-1. **感情認識 (Recognition)**：与えられたテキストが平均的な読者にどのような感情を喚起するかをLLMに推定させます。
-2. **情動反応性 (Reactivity)**：テキストを読む前（Baseline）と読んだ直後（Post）のLLM自身の自己報告VA状態を測定し、その変位（$\Delta V, \Delta A$）や刺激ベクトルに対する方向一致度（Directional Alignment）を分析します。
+実験は主に以下の4つの条件（Conditions）から評価されます：
+1. **Baseline**：感情刺激なしで、現在の自己状態を報告。
+2. **Recognition**：与えられたテキストが平均的な読者にどのような感情を喚起するかをLLMに推定させる。
+3. **Affective Reception**：テキストを読んだ直後のLLM自身の状態を報告させる。
+4. **Empathic Response**：他者の感情的経験に対する自由な応答文を生成させる。
 
 > [!WARNING]
-> Baselineは、`model_id × repetition` 単位で独立に取得します。
-> 同一 `model_id`・`repetition` 内の各刺激のPost値から同一Baseline値を減算して、$\Delta V$ および $\Delta A$ を計算します。
+> 各条件は相互に独立したAPIセッションとして実行されます。認識(Recognition)での回答が情動反応(Reception)に影響を与えないよう設計されています。
 
 ---
 
@@ -26,80 +28,66 @@
 
 ### `src/affective_empathy_eval/` (コアロジック)
 再利用可能な関数群やスキーマ定義が含まれています。
+- **`schemas.py`**: 出力が正しいJSON形式であり、`valence` / `arousal` が1.0〜9.0の範囲内にあることを保証します（`empathic_response` の場合は自由テキストを許容）。
+- **`data.py`**: EmoBankの5段階評定（1〜5）を `[-1, 1]` の範囲に変換し、VA平面を層化して刺激を抽出します。
 
-- **`schemas.py`**
-  - **役割**: LLMの出力結果を検証するためのPydanticモデル（`AffectiveState`）が定義されています。
-  - **内容**: 出力が正しいJSON形式であること、また `valence` および `arousal` の値が `-1.0` から `1.0` の範囲内にある数値を保証します。パース失敗時には詳細なエラーを返します。
-- **`data.py`**
-  - **役割**: データの読み込み、前処理、スケーリング、層化抽出（サンプリング）を行います。
-  - **内容**: EmoBankの5段階評定（1〜5）を概ね `[-1, 1]` の範囲に変換する `scale_vad` 関数や、VA平面を3x3のセルに分割して各セルから均等に刺激を抽出する `stratify_stimuli` 関数が実装されています。
-
-### `scripts/` (実行スクリプト)
-実験の各工程を実行するためのスクリプト群です。順番に実行することで実験パイプラインが回ります。
-
-- **`download_data.py`**
-  - **役割**: [EmoBankの公式リポジトリ](https://github.com/JULIELab/EmoBank) から `emobank.csv` の原本をダウンロードします。
-  - **結果**: `data/raw/emobank.csv` が保存されます。このファイルは読み取り専用として扱われます。
-- **`prepare_stimuli.py`**
-  - **役割**: 実験に使用する刺激（テキスト）をサンプリングします。
-  - **内容**: `configs/experiment.yaml` の設定（セル数や各セルの抽出件数、乱数シードなど）を読み込み、`data.py` のロジックを用いて元データから均等にテキストを抽出します。
-  - **結果**: `data/processed/stimuli.csv` が出力されます。各行には抽出されたテキストと、スケーリング済みのV/A値が付与されます。
-- **`run_experiment.py`**
-  - **役割**: 実際のLLMへのAPIリクエスト、出力の検証、結果の保存を行うメインスクリプトです。
-  - **結果**: `results/raw/{run_id}/responses.jsonl` に保存されます。同じ実験を再実行する場合も、必ず新しい `run_id` を発行し、既存の生ログを上書き・編集しません。
-- **`validate_run.py`**
-  - **役割**: 出力されたJSONLなどのデータが正しく生成されているかを検証するスクリプトです（Dry-run後の確認用）。
-
-### その他の重要なディレクトリ
-- **`configs/`**: 実験全体のパラメータ、評価対象モデルの定義、プロンプトの管理を行います。
-- **`prompts/`**: LLMに渡すプロンプトのテキストファイルが格納されています。
-- **`docs/`**: 詳細な実験計画書や意思決定ログ（`decision_log.md`）などが保存されます。
+### `scripts/` (実行・分析スクリプト)
+実験パイプラインを回すためのスクリプト群です。
+- **`download_data.py`**: EmoBankの原本をダウンロードします。
+- **`prepare_stimuli.py`**: 設定ファイルに基づき実験に使用する刺激をサンプリングします。
+- **`run_experiment.py`**: メインのAPI実行スクリプト。システムプロンプト・ユーザープロンプトを固定・ハッシュ化し、4条件の推論結果を保存します。
+- **`validate_run.py`**: 取得したJSONLの整合性（パース、スキーマ逸脱、エラー率）を検証します。
+- **`run_analysis.py`**: 1-9尺度を `[-1, 1]` へ変換し、Baselineからの変位（$\Delta V, \Delta A, R$）、位置整合性（Euclidean Distance）、方向整合性（DA: Cosine Alignment）を算出して統合CSV（`analysis_dataset.csv`）を生成します。
 
 ---
 
 ## どのような結果（データ）が出てくるか
 
-### 1. 抽出された刺激データ (`data/processed/stimuli.csv`)
-次のようなカラムを持つCSVデータが生成されます：
-- `text`: 刺激となる英文
-- `V_reader_scaled`: 人間が評価した読者のValence（-1.0〜1.0）
-- `A_reader_scaled`: 人間が評価した読者のArousal（-1.0〜1.0）
-- `v_cell`, `a_cell`: サンプリング用に分割されたセルのインデックス
+実験結果はフェーズ（`preliminary` / `main`）ごとに一意の `run_id` で管理されます。
+既存の生ログを上書き・編集しない追記不可の構成です。
 
-### 2. 実験結果の生ログ (`results/raw/{run_id}/responses.jsonl`)
-APIからの応答ごとに、1行1JSON（JSONL）の形式で以下のメタデータを含むデータが保存されます。
+### 1. 抽出された刺激データ (`data/processed/stimuli.csv`)
+- EmoBankの原文 (`text`)
+- 人間による読者視点VA (`V_reader_scaled`, `A_reader_scaled`: -1.0〜1.0)
+
+### 2. 実験結果の生ログ (`results/raw/{phase}/{run_id}/responses.jsonl`)
+1行1JSON（JSONL）の形式で、完全な再現性メタデータを保持します。
 
 ```json
 {
-  "run_id": "20260824T083520Z_dryrun",
-  "request_id": "uuid-v4-string",
-  "stimulus_id": "emobank_000123",
-  "baseline_id": "baseline_modelA_rep01",
+  "run_id": "20260824T124421Z_dryrun",
+  "request_id": "cbb49435-846d...",
+  "stimulus_id": "emobank_defenders5_31_47",
+  "baseline_id": "baseline_gpt-4o_rep01",
   "source_dataset": "EmoBank",
   "annotation_perspective": "reader",
-  "model_provider": "openai",
-  "model_id": "gpt-4o-2024-05-13",
-  "condition": "post",
+  "model_provider": "dummy_provider",
+  "model_id": "gpt-4o",
+  "condition": "affective_reception",
   "repetition": 1,
   "temperature": 0.0,
-  "top_p": 1.0,
-  "seed": null,
-  "prompt_id": "post_v1",
-  "prompt_hash": "sha256:...",
-  "parsed_valence": 0.5,
-  "parsed_arousal": -0.1,
-  "parse_status": "success",
-  "failure_reason": null,
-  "request_timestamp_utc": "2026-08-24T08:35:20.123456Z",
-  "response_timestamp_utc": "2026-08-24T08:35:21.553821Z",
-  "latency_ms": 1430,
-  "code_commit": "abc1234",
-  "config_hash": "sha256:..."
+  "system_prompt_id": "system_v1",
+  "system_prompt_hash": "b0a252...",
+  "prompt_id": "affective_reception_v1",
+  "prompt_hash": "7cfd8f...",
+  "parsed_valence": 7.0,
+  "parsed_arousal": 4.0,
+  "raw_response_text": "{\"valence\": 7.0, \"arousal\": 4.0}",
+  "code_commit": "019a3af",
+  "config_hash": "019a3af..."
 }
 ```
 
 > [!TIP]
-> 出力は `{run_id}` 単位のディレクトリにまとめられ、`responses.jsonl` のほか、使用した設定スナップショットやメタデータ（`metadata.json`, `config_snapshot.yaml` など）が同一ディレクトリに保存されます。
+> 各 `run_id` フォルダには、実行時の `config_snapshot.yaml` や `metadata.json` も一緒に保存され、実験環境が完全に追跡可能になります。
+
+### 3. 解析結果の派生データ (`results/derived/{phase}/{run_id}/analysis_dataset.csv`)
+`run_analysis.py` によって処理された分析用データ。
+- スケール変換済みの `parsed_valence`, `parsed_arousal` ([-1, 1])
+- 変位ベクトル `delta_V`, `delta_A`
+- 反応強度 `R`
+- 方向整合性 `DA` (Cosine Alignment)、微小変動除外フラグ `DA_excluded_reason` ($R < 0.10$ で除外)
+- 人間アンカーとのユークリッド距離 `Euclidean_Distance_to_Human`
 
 ---
 
@@ -111,34 +99,31 @@ APIからの応答ごとに、1行1JSON（JSONL）の形式で以下のメタデ
 # 1. 仮想環境の作成と有効化
 python3 -m venv .venv
 source .venv/bin/activate
-
-# 2. 依存関係のインストール
 pip install -e ".[dev]"
 
-# 3. 環境変数の設定
+# 2. 環境変数の設定
 ln -sf /mnt/nas/home/hiromi/src/.env .env
 
-# 4. テストの実行
+# 3. テストの実行
 pytest -q
 
-# 5. データ取得
+# 4. データ取得と刺激生成 (Dry-run用)
 python scripts/download_data.py
-
-# 6. 刺激セットの生成 (Dry-run用)
 python scripts/prepare_stimuli.py --config configs/experiment_dryrun.yaml
 
-# 7. 少数刺激・少数モデルで保存形式とJSON検証を確認 (Dry-run)
+# 5. 少数刺激・少数モデルでのDry-run実行
 python scripts/run_experiment.py \
   --config configs/experiment_dryrun.yaml \
   --mode dry-run
 
-# 8. Dry-run結果の検証
-python scripts/validate_run.py \
-  --run-id <RUN_ID>
+# 6. 結果の検証と解析パイプラインの実行
+RUN_ID=$(ls -t results/raw/preliminary | head -n 1)
+python scripts/validate_run.py --run-id $RUN_ID
+python scripts/run_analysis.py --run-id $RUN_ID
 
-# 9. 本実験
-python scripts/prepare_stimuli.py --config configs/experiment.yaml
+# 7. 本実験 (Main Experiment) への移行
+python scripts/prepare_stimuli.py --config configs/experiment_main.yaml
 python scripts/run_experiment.py \
-  --config configs/experiment.yaml \
+  --config configs/experiment_main.yaml \
   --mode api
 ```
