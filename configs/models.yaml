@@ -1,0 +1,18 @@
+models:
+  - id: gpt-4o
+    provider: openai
+    model_name: "TO_BE_CONFIRMED"
+    enabled: true
+    role: commercial_api
+
+  - id: claude-3-5-sonnet
+    provider: anthropic
+    model_name: "TO_BE_CONFIRMED"
+    enabled: true
+    role: commercial_api
+
+  - id: llama-3-8b-instruct
+    provider: local
+    model_name: "TO_BE_CONFIRMED"
+    enabled: false
+    role: open_weight_instruct
