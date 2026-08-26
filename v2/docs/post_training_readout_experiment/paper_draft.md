@@ -159,7 +159,7 @@ Cross-model Activation Patching の結果、中間層のコンポーネントを
 この非線形な応答は、パッチされた活性化と制約された自己報告分布間の関係が単一の線形利得（Gain）では適切に特徴付けられないことを示している。ただし、これが特定の出力トークンに対するゲーティング（output-token gating）であると確証するには、後段のロジット分解や unembedding swap 等の追加解析が必要である。
 
 ### 4.5 Late-Residual Substitution Test under Strict Identical Prompts
-We performed a strict late-residual substitution test under identical tokenized prompts. For selected source components, we injected the corresponding Base-derived contribution into the input of the final transformer block and measured the resulting change in the constrained self-report distribution. This intervention tests whether the selected contribution, when represented at the late residual stream, is sufficient to produce a direct final-block/output effect. It does not isolate all causal paths from the original source component through intervening layers.
+我々は、同一にトークン化されたプロンプト条件下で、厳密な後期残差置換テスト（Late-residual substitution test）を実施した。選択したソースコンポーネントについて、対応するBaseモデル由来の寄与を最終Transformerブロックの入力に注入し、結果として生じる制約付き自己報告分布の変化を測定した。この介入は、選択した寄与が後期のresidual streamに表現された場合、最終ブロックや出力に直接的な影響を与えるのに十分であるかどうかをテストするものである。これは、元のソースコンポーネントから中間層を経由するすべての因果経路を隔離（isolate）するものではない。
 
 具体的には、特定の候補コンポーネント（例: $MLP_{10}$）について、Baseモデルでの活性化をキャッシュし、Instructモデルのフォワードパスにおいて「最終層（Layer 27）の直前の入力（$h_{26}$）」に対して局所的にBase由来の活性化成分を加算（Substitution）した。
 
@@ -172,7 +172,7 @@ We performed a strict late-residual substitution test under identical tokenized 
 
 Table 4 に示すように、単一コンポーネント全体をパッチした場合（例：`res_10` において $\Delta WD_V \approx -0.162$、Table 3参照）と比較して、最終層の入力に対するSubstitution介入は、分布の変動量が極めて小さく（$\Delta WD_V \approx 0$、$\Delta E[V] \approx 0$）、Base型分布への回復を全く示さなかった。
 
-The tested late-residual substitutions produced only small changes in the Valence-marginal distribution. This result provides no support for a simple sufficient final-block shortcut under the tested source–receiver configuration. 感情抑制や自己報告の中立化メカニズムが単一の直接的なパスではなく、より複雑な間接的・分散的（Distributed）な計算経路を経ている可能性を示唆している。
+テストされた後期残差置換は、Valenceの周辺分布にわずかな変化しかもたらさなかった。この結果は、テストされたソースとレシーバーの設定下において、単純で十分な最終ブロックへのショートカットが存在するという仮説を支持するものではない。これは、感情抑制や自己報告の中立化メカニズムが単一の直接的なパスではなく、より複雑な間接的・分散的（Distributed）な計算経路を経ている可能性を示唆している。
 
 ### 4.6 Unembedding / RMSNorm Swap Analysis: Locus of Self-Report Neutralization
 前節までの結果から、感情自己報告の中立化が特定コンポーネントからの直接経路（Direct Readout）では説明できないことが判明した。そこで、中立化が最終出力段の重み層（RMSNorm および lm_head）の更新だけで説明できるか、または pre-output residual state の差がより強く寄与するかを検証するため、最終層におけるResidual表現、RMSNorm、Unembedding (lm_head) のパラメータ群を交差させた8条件の交差検証（Swap Analysis）を実施した。なお、スワップ操作の詳細な定義（全候補トークンへの適用やRMSNormの仕様等）については Appendix F に記載する。
@@ -303,11 +303,11 @@ Table 5のSwap Analysisにおける実装の定義は以下の通りである。
 ### Appendix G: 2D Joint-Distribution Metrics
 
 #### G.1 Jensen-Shannon Divergence (JSD)
-The Jensen-Shannon Divergence between the candidate sequence probability distributions $P$ and $Q$ over the 81 candidate states was computed as:
+81の候補状態に対するシーケンス確率分布 $P$ および $Q$ の間の Jensen-Shannon Divergence は以下のように計算された：
 $$ \mathrm{JSD}(P\|Q) = \frac{1}{2}\mathrm{KL}(P\|M) + \frac{1}{2}\mathrm{KL}(Q\|M) $$
-where $M = \frac{1}{2}(P+Q)$ and $\mathrm{KL}$ is the Kullback-Leibler divergence. The computation used the natural logarithm, bounding the JSD between 0 and $\ln(2)$. The distributions $P$ and $Q$ were strictly normalized over the 81 candidate strings without smoothing, as the language model likelihoods inherently map to non-zero positive probabilities.
+ここで、$M = \frac{1}{2}(P+Q)$ であり、$\mathrm{KL}$ は Kullback-Leibler ダイバージェンスである。計算には自然対数を使用し、JSDの範囲は 0 から $\ln(2)$ となる。言語モデルの尤度は本質的にゼロではない正の確率にマッピングされるため、分布 $P$ と $Q$ は平滑化（smoothing）を行わず、81の候補文字列全体で厳密に正規化された。
 
 #### G.2 2D Earth Mover's Distance (2D EMD)
-The 2D Earth Mover's Distance (2D EMD) or 2D Wasserstein Distance quantifies the cost of transforming one 81-state joint probability distribution $P(V,A)$ into another $Q(V,A)$. We defined the ground cost matrix $M$ using the Euclidean distance between candidate target states in the 2D Valence-Arousal grid:
+2D Earth Mover's Distance (2D EMD) または 2D Wasserstein Distance は、ある81状態の同時確率分布 $P(V,A)$ を別の分布 $Q(V,A)$ に変換するコストを定量化する。我々は、2次元Valence-Arousalグリッドにおける候補状態間のユークリッド距離を用いて、グラウンドコスト行列 $M$ を定義した：
 $$ d((v,a),(v',a')) = \sqrt{(v-v')^2+(a-a')^2} $$
-where $v, a \in \{1, 2, \dots, 9\}$. The optimal transport plan and the exact 2D EMD were computed using the `ot.emd2` solver from the Python Optimal Transport (`pot`) library on the exact joint probability distributions over the 81 states.
+ここで $v, a \in \{1, 2, \dots, 9\}$ である。最適輸送計画（optimal transport plan）および厳密な2D EMDは、Python Optimal Transport（`pot`）ライブラリの `ot.emd2` ソルバーを使用し、81状態全体の厳密な同時確率分布に基づいて計算された。
