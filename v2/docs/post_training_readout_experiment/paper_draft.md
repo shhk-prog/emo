@@ -164,11 +164,15 @@ Cross-model Activation Patching の結果、中間層のコンポーネントを
 具体的には、特定の候補コンポーネント（例: $MLP_{10}$）について、Baseモデルでの活性化をキャッシュし、Instructモデルのフォワードパスにおいて「最終層（Layer 27）の直前の入力（$h_{26}$）」に対して局所的にBase由来の活性化成分を加算（Substitution）した。
 
 **Table 4: Late-Residual Substitution to Final Layer Input ($h_{26}$)**
-| Component | $\Delta E[V]$ | $\Delta WD_V$ |
-|-----------|---------------|---------------|
-| `attn_14` |  0.0051       |  0.0013       |
-| `mlp_10`  | -0.0089       | -0.0023       |
-| `mlp_15`  |  0.0131       |  0.0018       |
+| Source | $\Delta E[V]$ | 95% CI | $\Delta WD_V$ | 95% CI | $\Delta_{\mathrm{specific}}$ vs random |
+|---|---:|---:|---:|---:|---:|
+| `attn_14` matched Base |  0.0051 | [TBD] | 0.0013 | [TBD] | [TBD] |
+| `attn_14` random source | [TBD] | [TBD] | [TBD] | [TBD] | — |
+| `mlp_10` matched Base | -0.0089 | [TBD] | -0.0023 | [TBD] | [TBD] |
+| `mlp_10` random source | [TBD] | [TBD] | [TBD] | [TBD] | — |
+| `mlp_15` matched Base |  0.0131 | [TBD] | 0.0018 | [TBD] | [TBD] |
+| `mlp_15` random source | [TBD] | [TBD] | [TBD] | [TBD] | — |
+*(Note: 95% CI and random-source comparisons will be computed via pair_id cluster bootstrap.)*
 
 Table 4 に示すように、単一コンポーネント全体をパッチした場合（例：`res_10` において $\Delta WD_V \approx -0.162$、Table 3参照）と比較して、最終層の入力に対するSubstitution介入は、分布の変動量が極めて小さく（$\Delta WD_V \approx 0$、$\Delta E[V] \approx 0$）、Base型分布への回復を全く示さなかった。
 テストされた後期残差置換は、分布にわずかな変化しかもたらさなかった。この結果は、選択された寄与が、テストされたレシーバーにおいてBase型の自己報告分布を回復させるのに十分であるという証拠を提供するものではない。
@@ -189,13 +193,13 @@ Table 4 に示すように、単一コンポーネント全体をパッチした
 | IBB | Instruct | Base | Base | 5.136 | 0.201 | 0.00344 | 0.263 |
 | IBI | Instruct | Base | Instruct | 5.113 | 0.198 | 0.00333 | 0.266 |
 
-Table 5に示す通り、期待Valence（$E[V]$）の平均値は各strict-swap条件間でわずかに変動するのみであった（Mean expected-Valence varied by at most 0.047 across swap conditions）。このことから、中立化のlocusを特定する主要な証拠は、平均値ではなく結合確率分布の全体的なシフトによってもたらされている。$WD_V$ によって定量化されたValence周辺分布の形状、ならびに JSD および 2D EMD によって定量化された81状態全体の結合確率分布（Joint distribution）の形状は、最終残差状態のソースに強く追従して明確に分かれた。残差のソースを固定したまま最終RMSNormやlm_headのパラメータのソースを変更しても分布の変動は極めて小さかった（$\Delta WD_V \approx 0.01$, $\Delta \text{2D EMD} \approx 0.02$）のに対し、残差のソースを切り替えると大幅に大きなシフトが生じた（$\Delta WD_V \approx 0.20$, $\Delta \text{2D EMD} \approx 0.26$）。特にJSDにおいて、残差ソースの変更による変動は、RMSNorm/lm_headパラメータの変更による変動と比較して約2桁大きい値を示した。したがって本介入下において、この結果は事後学習に伴う中立化を最終RMSNormやunembeddingマトリクスのみに帰する説明を弱めるものである。
+Table 5に示す通り、期待Valence（$E[V]$）の平均値は各strict-swap条件間でわずかに変動するのみであった（Mean expected-Valence varied by at most 0.047 across swap conditions）。このことから、中立化のlocusを特定する主要な証拠は、平均値ではなく結合確率分布の全体的なシフトによってもたらされている。$WD_V$ によって定量化されたValence周辺分布の形状、ならびに JSD および 2D EMD によって定量化された81状態全体の結合確率分布（Joint distribution）の形状は、最終残差状態のソースに強く追従して明確に分かれた。残差のソースを固定したまま最終RMSNormやlm_headのパラメータのソースを変更しても分布の変動は極めて小さかった（$\Delta WD_V \approx 0.01$, $\Delta \text{2D EMD} \approx 0.02$）のに対し、残差のソースを切り替えると大幅に大きなシフトが生じた（$\Delta WD_V \approx 0.20$, $\Delta \text{2D EMD} \approx 0.26$）。具体的には、Residualソースの置換は約 $3.3\times10^{-3}$ のJSDをもたらしたのに対し、Baseの残差を固定したRMSNorm/lm_headのスワップでは最大でも $2\times10^{-5}$ にとどまった。このJSDの明確な差は、2D EMDにおける 0.263–0.266 へのシフトという結果とも完全に補完関係にある。したがって本介入下において、この結果は事後学習に伴う中立化を最終RMSNormやunembeddingマトリクスのみに帰する説明を弱めるものである。
 
 ---
 
 ## 5. Discussion
 
-本研究の結果は、自己報告の平坦化が、probeで測定される情動関連情報の完全な消去だけでは説明されにくいことを示す。cross-model representation alignment、conditional coupling、component interventionの結果は、post-trainingに伴うrepresentation-to-self-report mappingの変化という仮説を支持する。Token-level path patchingでは、検査した直接component-to-final-residual介入について、random-source controlを超える選択的な回復は得られなかった。この結果は単純な直接readout説明を弱めるが、post-training-associatedな変化の完全な下流経路を同定するものではない。
+本研究の結果は、自己報告の平坦化が、probeで測定される情動関連情報の完全な消去だけでは説明されにくいことを示す。cross-model representation alignment、conditional coupling、component interventionの結果は、post-trainingに伴うrepresentation-to-self-report mappingの変化という仮説を支持する。厳密な同一プロンプト条件下での後期残差置換は、制約付き自己報告分布に小さな変化しかもたらさず、Base型の分布を回復しなかった。この結果は単純な直接readout説明を弱めるが、post-training-associatedな変化の完全な下流経路を同定するものではない。
 本実験でテストされた8条件スワップは、最終的な残差状態の寄与を、最終RMSNormおよびUnembeddingマトリクスの寄与から分離するものである。結果として、81候補からなる自己報告の尤度分布は残差のソースに追従し、期待Valenceの平均値は比較的安定していた。スクリーニングされた直接的な最終残差寄与テストのnull結果と合わせて、この結果は中立化に関する単純な出力層のみの説明を弱めるものである。ただし、本分析はどの単一の上流層、コンポーネント、または非線形な媒介パスが残差状態の差異を生み出しているのかを特定するものではなく、単一の深層ルーティングメカニズムを確立するものでもない。
 
 本研究における各主張と主要な証拠、限界の要約を以下の表（Evidence Map）に示す。
@@ -210,12 +214,12 @@ Table 5に示す通り、期待Valence（$E[V]$）の平均値は各strict-swap�
 | 検査したfinal RMSNorm / unembeddingのみの説明は支持されない | Strict direct contribution null test、および8-condition swapで出力分布がRMSNorm/lm_head sourceよりfinal residual sourceを追跡したこと | 最終residual差を生成する上流component・nonlinear mediator pathは未同定 |
 
 ### 5.1 Limitations
-本研究にはいくつかの限界がある。第一に、評価対象が Qwen2.5-1.5B という単一のアーキテクチャ・スケールに限定されており、他モデルへの一般化可能性は未検証である。第二に、BaseとInstructは複数の学習段階、データソース、最適化手法において異なるため、本研究の実験は特定のalignment手法の因果的効果（causal effect）ではなく、post-trainingに関連した差異（post-training-associated differences）を特定するものである。第三に、Activation Patching がプロンプト最終トークンを中心とした層/コンポーネントレベルに留まっており、Unembedding層以外の間接的な非線形因果媒介経路（例えば中間層から他のアテンションヘッドを経由したパスなど）の特定には至っていない。本研究で観察された 8-condition Swap の結果や $\lambda$-dose-response の非線形性は出力分布へのルーティング変化を記述的に示唆するが、具体的なサブネットワークレベルでの完全な経路（Circuit）を同定するにはさらなる調査が必要である。第四に、因果プロービングにおける completeness（標的概念の操作性）と selectivity（非標的属性の保持）のトレードオフが完全に解消されたわけではなく、アーティファクトが含まれる可能性を排除できない。
+本研究にはいくつかの限界がある。第一に、評価対象が Qwen2.5-1.5B という単一のアーキテクチャ・スケールに限定されており、他モデルへの一般化可能性は未検証である。第二に、BaseとInstructは複数の学習段階、データソース、最適化手法において異なるため、本研究の実験は特定のalignment手法の因果的効果（causal effect）ではなく、post-trainingに関連した差異（post-training-associated differences）を特定するものである。第三に、Activation Patching がプロンプト最終トークンを中心とした層/コンポーネントレベルに留まっており、Unembedding層以外の間接的な非線形因果媒介経路（例えば中間層から他のアテンションヘッドを経由したパスなど）の特定には至っていない。本研究で観察された 8-condition Swap の結果や $\lambda$-dose-response の非線形性は出力分布へのルーティング変化を記述的に示唆するが、具体的なサブネットワークレベルでの完全な経路（Circuit）を同定するにはさらなる調査が必要である。第四に、因果プロービングにおける completeness（標的概念の操作性）と selectivity（非標的属性の保持）のトレードオフが完全に解消されたわけではなく、アーティファクトが含まれる可能性を排除できない。最後に、後期残差および出力層の分析で用いた厳密な同一プロンプトプロトコルは、主要な行動評価で用いたモデル固有のチャットテンプレートプロトコルとは異なるため、絶対的な自己報告の数値をこれらのプロトコル間で直接比較すべきではない。
 
 ---
 
 ## 6. Conclusion
-Qwen2.5-1.5B BaseおよびInstructでは、本研究のプローブで定義した情動関連情報が各モデル内で復元可能であり、刺激強度に依存した内部応答も観測された。クロスモデルの直接転移および直交転移は失敗した一方、正則化線形アライメントは独立したheld-outデータでの予測を部分的に回復した。この結果は、完全な表現消去ではなく、post-training-associatedな非直交的かつ部分的に線形整列可能な表現変換と整合する。条件付き混合効果モデルは、評価した層・Valence readout・prompt条件におけるinternal-to-self-report couplingの一様な負方向低下を支持しなかった。スクリーニング対象の中間層・componentでは、Base-to-Instructの単一component patchingは自己報告分布を変化させたが、Base型分布を回復しなかった。対応しないsource activationやrandom controlは主に非選択的な分布破壊を生じ、二component介入は概ね加算的で、わずかに減衰した効果を示した。以上は、post-training-associatedなrepresentation-to-report mapping変化に対する複数componentの分離可能な寄与と整合する。Token-level path patchingを用いた評価では、random-source controlを超える選択的な直接component-to-final-readout効果は回復されず、単純なshallow-readoutによる説明は制限される。8条件スワップ交差検証はさらに、期待Valenceの分布が最終的なRMSNormやUnembeddingマトリクスのソースよりも、最終的な残差表現のソースに強く追従することを示した。この結果は、中立化に関する単純な出力層のみの説明を弱める一方で、上流コンポーネントや非線形媒介経路の寄与については未解決のまま残している。
+Qwen2.5-1.5B BaseおよびInstructでは、本研究のプローブで定義した情動関連情報が各モデル内で復元可能であり、刺激強度に依存した内部応答も観測された。クロスモデルの直接転移および直交転移は失敗した一方、正則化線形アライメントは独立したheld-outデータでの予測を部分的に回復した。この結果は、完全な表現消去ではなく、post-training-associatedな非直交的かつ部分的に線形整列可能な表現変換と整合する。条件付き混合効果モデルは、評価した層・Valence readout・prompt条件におけるinternal-to-self-report couplingの一様な負方向低下を支持しなかった。スクリーニング対象の中間層・componentでは、Base-to-Instructの単一component patchingは自己報告分布を変化させたが、Base型分布を回復しなかった。対応しないsource activationやrandom controlは主に非選択的な分布破壊を生じ、二component介入は概ね加算的で、わずかに減衰した効果を示した。以上は、post-training-associatedなrepresentation-to-report mapping変化に対する複数componentの分離可能な寄与と整合する。テストされた後期残差置換はわずかな変化しかもたらさず、Base型の分布を回復しなかった。これにより単純なshallow-readoutによる説明は制限される。8条件スワップ交差検証はさらに、期待Valenceの分布が最終的なRMSNormやUnembeddingマトリクスのソースよりも、最終的な残差表現のソースに強く追従することを示した。この結果は、中立化に関する単純な出力層のみの説明を弱める一方で、上流コンポーネントや非線形媒介経路の寄与については未解決のまま残している。
 
 ---
 ## Appendix
