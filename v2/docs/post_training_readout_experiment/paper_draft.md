@@ -1,7 +1,7 @@
 # When Affective Self-Reports Do Not Trace Internal Representations: Post-Training-Associated Changes in LLMs
 
 ## Abstract
-In our preliminary evaluations and prior work, some post-trained Large Language Models (LLMs) exhibit flattened or neutralized affective self-reports, despite retaining the ability to process emotional context. It remains unclear whether this neutralization stems from the complete erasure of internal affective representations (Erasure), a transformation of the representational geometry (Transformation), or a uniform suppression of the readout pathway (Global Suppression). In this paper, we systematically investigate the causal pathways from internal affective representations to behavioral self-reports in Qwen2.5-1.5B (Base and Instruct models) using a keyword-free minimal-pair dataset. We preregistered three primary competing accounts: erasure, representational transformation, and global suppression. We then evaluated whether the intervention results were consistent with a distributed-contribution account of representation-to-report mapping. Our observed within-model decodability and partially recoverable cross-model alignment provide evidence against the complete erasure of probe-defined affect-relevant information. Furthermore, conditional coupling analyses did not support a uniform negative shift after post-training, and component interventions identified multiple separable causal contributions consistent with distributed changes in representation-to-report mapping. Token-level path patching (a direct final-residual contribution test) did not identify a selective direct component-to-final-readout effect beyond random-source controls. This negative result constrains simple shallow-readout accounts and motivates further investigation of distributed downstream pathways. These results motivate the hypothesis that post-training-associated changes alter the conditional mapping between internal affect-relevant coordinates and constrained self-report distributions, highlighting a dissociation between a model's internal states and its behavioral claims.
+In our preliminary evaluations and prior work, some post-trained Large Language Models (LLMs) exhibit flattened or neutralized affective self-reports, despite retaining the ability to process emotional context. It remains unclear whether this neutralization stems from the complete erasure of internal affective representations (Erasure), a transformation of the representational geometry (Transformation), or a uniform suppression of the readout pathway (Global Suppression). In this paper, we systematically investigate the causal pathways from internal affective representations to behavioral self-reports in Qwen2.5-1.5B (Base and Instruct models) using a keyword-free minimal-pair dataset. We preregistered three primary competing accounts: erasure, representational transformation, and global suppression. We then evaluated whether the intervention results were consistent with a distributed-contribution account of representation-to-report mapping. Our observed within-model decodability and partially recoverable cross-model alignment provide evidence against the complete erasure of probe-defined affect-relevant information. Furthermore, conditional coupling analyses did not support a uniform negative shift after post-training, and component interventions identified multiple separable causal contributions consistent with distributed changes in representation-to-report mapping. A late-residual substitution test under strict identical prompts produced only small changes in the constrained self-report distribution and did not recover Base-like distributions. This negative result constrains simple late-residual shortcut accounts and motivates further investigation of distributed downstream pathways. These results motivate the hypothesis that post-training-associated changes alter the conditional mapping between internal affect-relevant coordinates and constrained self-report distributions, highlighting a dissociation between a model's internal states and its behavioral claims.
 
 ---
 
@@ -143,7 +143,7 @@ Cross-model Activation Patching の結果、中間層のコンポーネントを
 | Layer 16 `res`| -0.094                   | 0.298            | 0.138             | -0.160      |
 | Layer 15 `res`| -0.094                   | 0.301            | 0.142             | -0.159      |
 
-しかし、単一のコンポーネントパッチングによって Baseモデルの分布が完全に回復することはなく、WDによる評価でも完全な Base 型への回帰には至らなかった。さらに、対応しないペアを用いた Matched-control パッチングは、分布の非選択的な破壊（OOD化による中立への崩壊）をもたらした。
+しかし、単一のコンポーネントパッチングによって Baseモデルの分布が完全に回復することはなく、WDによる評価でも完全な Base 型への回帰には至らなかった。さらに、対応しない中性刺激をsourceとする unmatched-neutral control パッチングは、分布の非選択的な破壊（OOD化による中立への崩壊）をもたらした。
 
 ![Activation Patching](file:///mnt/nas/home/hiromi/.gemini/antigravity-ide/brain/5af8c3f8-4701-4aeb-abff-f62a3997e299/plots/activation_patching_plot.png)
 *Figure 3: Activation Patching results showing the shift in expected Valence when patching Base activations into Instruct.*
@@ -171,8 +171,7 @@ Cross-model Activation Patching の結果、中間層のコンポーネントを
 | `mlp_15`  |  0.0131       |  0.0018       |
 
 Table 4 に示すように、単一コンポーネント全体をパッチした場合（例：`res_10` において $\Delta WD_V \approx -0.162$、Table 3参照）と比較して、最終層の入力に対するSubstitution介入は、分布の変動量が極めて小さく（$\Delta WD_V \approx 0$、$\Delta E[V] \approx 0$）、Base型分布への回復を全く示さなかった。
-
-テストされた後期残差置換は、Valenceの周辺分布にわずかな変化しかもたらさなかった。この結果は、テストされたソースとレシーバーの設定下において、単純で十分な最終ブロックへのショートカットが存在するという仮説を支持するものではない。これは、感情抑制や自己報告の中立化メカニズムが単一の直接的なパスではなく、より複雑な間接的・分散的（Distributed）な計算経路を経ている可能性を示唆している。
+テストされた後期残差置換は、分布にわずかな変化しかもたらさなかった。この結果は、選択された寄与が、テストされたレシーバーにおいてBase型の自己報告分布を回復させるのに十分であるという証拠を提供するものではない。
 
 ### 4.6 Unembedding / RMSNorm Swap Analysis: Locus of Self-Report Neutralization
 前節までの結果から、感情自己報告の中立化が特定コンポーネントからの直接経路（Direct Readout）では説明できないことが判明した。そこで、中立化が最終出力段の重み層（RMSNorm および lm_head）の更新だけで説明できるか、または pre-output residual state の差がより強く寄与するかを検証するため、最終層におけるResidual表現、RMSNorm、Unembedding (lm_head) のパラメータ群を交差させた8条件の交差検証（Swap Analysis）を実施した。なお、スワップ操作の詳細な定義（全候補トークンへの適用やRMSNormの仕様等）については Appendix F に記載する。
@@ -190,14 +189,14 @@ Table 4 に示すように、単一コンポーネント全体をパッチした
 | IBB | Instruct | Base | Base | 5.136 | 0.201 | 0.00344 | 0.263 |
 | IBI | Instruct | Base | Instruct | 5.113 | 0.198 | 0.00333 | 0.266 |
 
-Table 5に示す通り、期待Valence（$E[V]$）の平均値は各strict-swap条件間でわずかに変動するのみであった（Mean expected-Valence varied by at most 0.047 across swap conditions）。このことから、中立化のlocusを特定する主要な証拠は、平均値ではなく結合確率分布の全体的なシフトによってもたらされている。$WD_V$ によって定量化されたValence周辺分布の形状、ならびに JSD および 2D EMD によって定量化された81状態全体の結合確率分布（Joint distribution）の形状は、最終残差状態のソースに強く追従して明確に分かれた。残差のソースを固定したまま最終RMSNormやlm_headのパラメータのソースを変更しても分布の変動は極めて小さかった（$\Delta WD_V \approx 0.01$, $\Delta \text{2D EMD} \approx 0.02$）のに対し、残差のソースを切り替えると大幅に大きなシフトが生じた（$\Delta WD_V \approx 0.20$, $\Delta \text{2D EMD} \approx 0.26$）。したがって本介入下において、この結果は事後学習に伴う中立化を最終RMSNormやunembeddingマトリクスのみに帰する説明を弱めるものである。
+Table 5に示す通り、期待Valence（$E[V]$）の平均値は各strict-swap条件間でわずかに変動するのみであった（Mean expected-Valence varied by at most 0.047 across swap conditions）。このことから、中立化のlocusを特定する主要な証拠は、平均値ではなく結合確率分布の全体的なシフトによってもたらされている。$WD_V$ によって定量化されたValence周辺分布の形状、ならびに JSD および 2D EMD によって定量化された81状態全体の結合確率分布（Joint distribution）の形状は、最終残差状態のソースに強く追従して明確に分かれた。残差のソースを固定したまま最終RMSNormやlm_headのパラメータのソースを変更しても分布の変動は極めて小さかった（$\Delta WD_V \approx 0.01$, $\Delta \text{2D EMD} \approx 0.02$）のに対し、残差のソースを切り替えると大幅に大きなシフトが生じた（$\Delta WD_V \approx 0.20$, $\Delta \text{2D EMD} \approx 0.26$）。特にJSDにおいて、残差ソースの変更による変動は、RMSNorm/lm_headパラメータの変更による変動と比較して約2桁大きい値を示した。したがって本介入下において、この結果は事後学習に伴う中立化を最終RMSNormやunembeddingマトリクスのみに帰する説明を弱めるものである。
 
 ---
 
 ## 5. Discussion
 
 本研究の結果は、自己報告の平坦化が、probeで測定される情動関連情報の完全な消去だけでは説明されにくいことを示す。cross-model representation alignment、conditional coupling、component interventionの結果は、post-trainingに伴うrepresentation-to-self-report mappingの変化という仮説を支持する。Token-level path patchingでは、検査した直接component-to-final-residual介入について、random-source controlを超える選択的な回復は得られなかった。この結果は単純な直接readout説明を弱めるが、post-training-associatedな変化の完全な下流経路を同定するものではない。
-本実験でテストされた8条件スワップは、最終的な残差状態の寄与を、最終RMSNormおよびUnembeddingマトリクスの寄与から分離するものである。結果として、期待Valenceの分布は残差のソースに追従し、RMSNormやUnembeddingのソースには比較的鈍感なままであった。スクリーニングされた直接的な最終残差寄与テストのnull結果と合わせて、この結果は中立化に関する単純な出力層のみの説明を弱めるものである。ただし、本分析はどの単一の上流層、コンポーネント、または非線形な媒介パスが残差状態の差異を生み出しているのかを特定するものではなく、単一の深層ルーティングメカニズムを確立するものでもない。
+本実験でテストされた8条件スワップは、最終的な残差状態の寄与を、最終RMSNormおよびUnembeddingマトリクスの寄与から分離するものである。結果として、81候補からなる自己報告の尤度分布は残差のソースに追従し、期待Valenceの平均値は比較的安定していた。スクリーニングされた直接的な最終残差寄与テストのnull結果と合わせて、この結果は中立化に関する単純な出力層のみの説明を弱めるものである。ただし、本分析はどの単一の上流層、コンポーネント、または非線形な媒介パスが残差状態の差異を生み出しているのかを特定するものではなく、単一の深層ルーティングメカニズムを確立するものでもない。
 
 本研究における各主張と主要な証拠、限界の要約を以下の表（Evidence Map）に示す。
 
@@ -211,7 +210,7 @@ Table 5に示す通り、期待Valence（$E[V]$）の平均値は各strict-swap�
 | 検査したfinal RMSNorm / unembeddingのみの説明は支持されない | Strict direct contribution null test、および8-condition swapで出力分布がRMSNorm/lm_head sourceよりfinal residual sourceを追跡したこと | 最終residual差を生成する上流component・nonlinear mediator pathは未同定 |
 
 ### 5.1 Limitations
-本研究にはいくつかの限界がある。第一に、評価対象が Qwen2.5-1.5B という単一のアーキテクチャ・スケールに限定されており、他モデルへの一般化可能性は未検証である。第二に、Activation Patching がプロンプト最終トークンを中心とした層/コンポーネントレベルに留まっており、Unembedding層以外の間接的な非線形因果媒介経路（例えば中間層から他のアテンションヘッドを経由したパスなど）の特定には至っていない。本研究で観察された 8-condition Swap の結果や $\lambda$-dose-response の非線形性は出力分布へのルーティング変化を記述的に示唆するが、具体的なサブネットワークレベルでの完全な経路（Circuit）を同定するにはさらなる調査が必要である。第三に、因果プロービングにおける completeness（標的概念の操作性）と selectivity（非標的属性の保持）のトレードオフが完全に解消されたわけではなく、アーティファクトが含まれる可能性を排除できない。
+本研究にはいくつかの限界がある。第一に、評価対象が Qwen2.5-1.5B という単一のアーキテクチャ・スケールに限定されており、他モデルへの一般化可能性は未検証である。第二に、BaseとInstructは複数の学習段階、データソース、最適化手法において異なるため、本研究の実験は特定のalignment手法の因果的効果（causal effect）ではなく、post-trainingに関連した差異（post-training-associated differences）を特定するものである。第三に、Activation Patching がプロンプト最終トークンを中心とした層/コンポーネントレベルに留まっており、Unembedding層以外の間接的な非線形因果媒介経路（例えば中間層から他のアテンションヘッドを経由したパスなど）の特定には至っていない。本研究で観察された 8-condition Swap の結果や $\lambda$-dose-response の非線形性は出力分布へのルーティング変化を記述的に示唆するが、具体的なサブネットワークレベルでの完全な経路（Circuit）を同定するにはさらなる調査が必要である。第四に、因果プロービングにおける completeness（標的概念の操作性）と selectivity（非標的属性の保持）のトレードオフが完全に解消されたわけではなく、アーティファクトが含まれる可能性を排除できない。
 
 ---
 
