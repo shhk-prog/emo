@@ -166,13 +166,13 @@ Cross-model Activation Patching の結果、中間層のコンポーネントを
 **Table 4: Late-Residual Substitution to Final Layer Input ($h_{26}$)**
 | Source | $\Delta E[V]$ | 95% CI | $\Delta WD_V$ | 95% CI | $\Delta_{\mathrm{specific}}$ vs random |
 |---|---:|---:|---:|---:|---:|
-| `attn_14` matched Base |  0.0051 | [TBD] | 0.0013 | [TBD] | [TBD] |
-| `attn_14` random source | [TBD] | [TBD] | [TBD] | [TBD] | — |
-| `mlp_10` matched Base | -0.0089 | [TBD] | -0.0023 | [TBD] | [TBD] |
-| `mlp_10` random source | [TBD] | [TBD] | [TBD] | [TBD] | — |
-| `mlp_15` matched Base |  0.0131 | [TBD] | 0.0018 | [TBD] | [TBD] |
-| `mlp_15` random source | [TBD] | [TBD] | [TBD] | [TBD] | — |
-*(Note: 95% CI and random-source comparisons will be computed via pair_id cluster bootstrap.)*
+| `attn_14` matched Base | 0.0051 | [0.0031, 0.0073] | 0.0013 | [-0.0007, 0.0032] | -0.0014 [-0.0029, 0.0003] |
+| `attn_14` random source | 0.0064 | [0.0042, 0.0089] | 0.0009 | [-0.0017, 0.0031] | — |
+| `mlp_10` matched Base | -0.0089 | [-0.0123, -0.0056] | -0.0023 | [-0.0054, 0.0011] | 0.0010 [-0.0017, 0.0038] |
+| `mlp_10` random source | -0.0099 | [-0.0139, -0.0061] | -0.0006 | [-0.0042, 0.0032] | — |
+| `mlp_15` matched Base | 0.0131 | [0.0080, 0.0180] | 0.0018 | [-0.0038, 0.0068] | -0.0012 [-0.0041, 0.0017] |
+| `mlp_15` random source | 0.0143 | [0.0084, 0.0202] | 0.0037 | [-0.0021, 0.0087] | — |
+*(Note: 95% CIs and differences were calculated using 10,000 iterations of pair_id cluster bootstrap.)*
 
 Table 4 に示すように、単一コンポーネント全体をパッチした場合（例：`res_10` において $\Delta WD_V \approx -0.162$、Table 3参照）と比較して、最終層の入力に対するSubstitution介入は、分布の変動量が極めて小さく（$\Delta WD_V \approx 0$、$\Delta E[V] \approx 0$）、Base型分布への回復を全く示さなかった。
 テストされた後期残差置換は、分布にわずかな変化しかもたらさなかった。この結果は、選択された寄与が、テストされたレシーバーにおいてBase型の自己報告分布を回復させるのに十分であるという証拠を提供するものではない。

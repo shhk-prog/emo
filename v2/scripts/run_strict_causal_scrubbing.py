@@ -27,6 +27,35 @@ def get_patch_hook(cache, name):
         # The cache contains the target patched hidden state for the last token
         hidden_states[:, -1, :] = cache[name]
         return (hidden_states,) + inputs[1:]
+import os
+import argparse
+import pandas as pd
+import torch
+import torch.nn.functional as F
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from tqdm import tqdm
+import numpy as np
+from scipy.stats import wasserstein_distance
+import random
+
+# Fix random seed for reproducibility of random source patching
+random.seed(42)
+np.random.seed(42)
+
+def get_capture_hook(cache, name):
+    def hook(module, inputs, outputs):
+        if isinstance(outputs, tuple):
+            cache[name] = outputs[0][:, -1, :].detach().clone()
+        else:
+            cache[name] = outputs[:, -1, :].detach().clone()
+    return hook
+
+def get_patch_hook(cache, name):
+    def hook(module, inputs):
+        hidden_states = inputs[0].clone()
+        # The cache contains the target patched hidden state for the last token
+        hidden_states[:, -1, :] = cache[name]
+        return (hidden_states,) + inputs[1:]
     return hook
 
 def apply_chat_template_val_forcing(tokenizer, text):
@@ -128,20 +157,36 @@ def main():
             probs_unembed = F.softmax(patched_logits_unembed, dim=-1)
             Ev_unembed = torch.sum(probs_unembed * torch.arange(1, 10, device=probs_unembed.device)).item()
             
-            # 3. Path Patching to Layer 27 (True Causal Scrubbing)
+            # 3. Path Patching to Layer 27 (True Causal Scrubbing - Matched)
             patched_h26 = h26_clean - inst_c + base_c
             patch_cache["h26"] = patched_h26
             
             inst_h26_handle = inst_model.model.layers[final_layer_idx].register_forward_pre_hook(get_patch_hook(patch_cache, "h26"))
-            
             with torch.no_grad():
                 patched_outputs = inst_model(prompt_ids)
-                
             inst_h26_handle.remove()
             
             patched_logits_l27 = patched_outputs.logits[0, -1, numeric_tokens]
             probs_l27 = F.softmax(patched_logits_l27, dim=-1)
             Ev_l27 = torch.sum(probs_l27 * torch.arange(1, 10, device=probs_l27.device)).item()
+
+            # 3.5 Path Patching to Layer 27 (Random Source)
+            random_i = random.randint(0, len(test_df) - 1)
+            while random_i == i and len(test_df) > 1:
+                random_i = random.randint(0, len(test_df) - 1)
+            base_c_random = all_base_comps[random_i].to(inst_model.device)
+            
+            patched_h26_random = h26_clean - inst_c + base_c_random
+            patch_cache["h26"] = patched_h26_random
+            
+            inst_h26_handle_random = inst_model.model.layers[final_layer_idx].register_forward_pre_hook(get_patch_hook(patch_cache, "h26"))
+            with torch.no_grad():
+                patched_outputs_random = inst_model(prompt_ids)
+            inst_h26_handle_random.remove()
+            
+            patched_logits_l27_random = patched_outputs_random.logits[0, -1, numeric_tokens]
+            probs_l27_random = F.softmax(patched_logits_l27_random, dim=-1)
+            Ev_l27_random = torch.sum(probs_l27_random * torch.arange(1, 10, device=probs_l27_random.device)).item()
             
             # 4. Base Baseline
             with torch.no_grad():
@@ -153,6 +198,7 @@ def main():
             wd_inst = wasserstein_distance(np.arange(1, 10), np.arange(1, 10), u_weights=orig_probs.cpu().detach().numpy(), v_weights=base_probs.cpu().detach().numpy())
             wd_unembed = wasserstein_distance(np.arange(1, 10), np.arange(1, 10), u_weights=probs_unembed.cpu().detach().numpy(), v_weights=base_probs.cpu().detach().numpy())
             wd_l27 = wasserstein_distance(np.arange(1, 10), np.arange(1, 10), u_weights=probs_l27.cpu().detach().numpy(), v_weights=base_probs.cpu().detach().numpy())
+            wd_l27_random = wasserstein_distance(np.arange(1, 10), np.arange(1, 10), u_weights=probs_l27_random.cpu().detach().numpy(), v_weights=base_probs.cpu().detach().numpy())
             
             summary_results.append({
                 "id": row['id'],
@@ -160,13 +206,17 @@ def main():
                 "orig_Ev": orig_Ev,
                 "Ev_unembed": Ev_unembed,
                 "Ev_l27": Ev_l27,
+                "Ev_l27_random": Ev_l27_random,
                 "wd_inst": wd_inst,
                 "wd_unembed": wd_unembed,
                 "wd_l27": wd_l27,
+                "wd_l27_random": wd_l27_random,
                 "delta_Ev_unembed": Ev_unembed - orig_Ev,
                 "delta_Ev_l27": Ev_l27 - orig_Ev,
+                "delta_Ev_l27_random": Ev_l27_random - orig_Ev,
                 "delta_WD_unembed": wd_unembed - wd_inst,
-                "delta_WD_l27": wd_l27 - wd_inst
+                "delta_WD_l27": wd_l27 - wd_inst,
+                "delta_WD_l27_random": wd_l27_random - wd_inst
             })
             
         base_handle.remove()
