@@ -123,6 +123,9 @@ Windows PowerShellの場合：
 ### 1.6 基本的にカスタムコードを用いない
 実験の実行や分析は、既存のスクリプトやライブラリを活用して行う。
 
+### 1.7 GPUを勝手に用いない
+GPUを用いる場合は事前に相談する。
+
 
 ---
 
@@ -197,65 +200,30 @@ Windows PowerShellの場合：
 ```text
 project-root/
 ├── AGENTS.md
-├── README.md
-├── pyproject.toml
-├── uv.lock                     # uvを使う場合
-├── .python-version
-├── .gitignore
-├── .env.example
-├── configs/
-│   ├── experiment.yaml
-│   ├── models.yaml
-│   ├── prompts.yaml
-│   └── analysis.yaml
-├── data/
-│   ├── raw/                    # 読み取り専用：原データ
-│   ├── interim/                # 中間生成物
-│   ├── processed/              # 分析用データ
-│   └── metadata/               # データ辞書・ハッシュ・ライセンス情報
-├── docs/
-│   ├── protocol.md
-│   ├── decision_log.md
-│   ├── data_dictionary.md
-│   └── analysis_plan.md
-├── prompts/
-│   ├── baseline_v1.txt
-│   ├── recognition_v1.txt
-│   └── post_v1.txt
-├── src/
-│   └── affective_empathy_eval/
-│       ├── __init__.py
-│       ├── data.py
-│       ├── sampling.py
-│       ├── clients/
-│       ├── prompts.py
-│       ├── schemas.py
-│       ├── runner.py
-│       ├── validation.py
-│       ├── metrics.py
-│       ├── analysis.py
-│       └── reporting.py
-├── scripts/
-│   ├── download_data.py
-│   ├── prepare_stimuli.py
-│   ├── run_experiment.py
-│   ├── validate_run.py
-│   └── run_analysis.py
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   └── fixtures/
-├── results/
-│   ├── raw/                    # 追記専用：API応答・実行メタデータ
-│   ├── derived/                # 派生データ・集計
-│   ├── figures/
-│   └── tables/
-└── notebooks/                  # 探索用。主解析の正本はsrc/scriptsに置く
+├── fairshare_gpu/
+├── .venv/
+├── v1/
+│   ├── README.md
+│   ├── pyproject.toml
+│   ├── .python-version
+│   ├── .env.example
+│   ├── configs/
+│   ├── data/
+│   ├── docs/
+│   ├── prompts/
+│   ├── src/
+│   ├── scripts/
+│   ├── tests/
+│   ├── results/
+│   └── notebooks/
+└── v2/                         # 新規バージョン（例）
+    ├── docs/
+    └── ...
 ```
 
-- 再利用可能なロジックは `src/` に置く。
+- 再利用可能なロジックは各バージョンの `src/` (例: `v1/src/`) に置く。
 - `notebooks/` は探索的作業に限定し、論文の主結果はスクリプトで再現できるようにする。
-- 設定値をコード内にベタ書きしない。設定は `configs/` に置く。
+- 設定値をコード内にベタ書きしない。設定は各バージョンの `configs/` (例: `v1/configs/`) に置く。
 
 ---
 
