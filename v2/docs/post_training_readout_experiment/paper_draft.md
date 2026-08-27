@@ -20,6 +20,7 @@ LLMは感情認識や情動に配慮した言語タスクを高い精度で実�
 1. Base/Instruct間で、情動情報が内部に保持されつつも、非直交的かつ部分的に線形整列可能な表現変換（Transformation）を受けることを交差デコーディング（Cross-decoding）により示した。
 2. 自己報告の出力分布（尤度）と内部表現を接続する混合効果モデルにおいて、一様な出力抑制（Global Suppression）の証拠は得られず、層および次元に依存した再写像が生じている可能性を提示した。
 3. Activation Patchingにより、自己報告の崩壊が単一のボトルネックではなく、複数のコンポーネントによる分離可能な寄与（Distributed Remapping）と整合することを明らかにした。
+4. 最新の 8-condition Output Norm Swap 解析および 2D EMD/JSD の結果から、自己報告の中立化が最終出力層の重みのみに起因するのではなく、後期のResidual状態の深い変化に起因することを定量的に示した。
 
 ---
 
@@ -41,10 +42,14 @@ Mechanistic Interpretabilityにおける因果的プロービング手法の信�
 ### 3.1 Dataset and Evaluation Protocol
 感情語彙の存在による単純な分類（Lexical heuristic）を排除し、純粋な文脈からの情動推論を評価するため、**AIPsy-Affectデータセット (`keidolabs/aipsy-affect`)** を使用した。このデータセットは、人物・設定・長さを共有しつつ、感情価や強度のみが異なる臨床ヴィネットの最小対（Affective / Neutral）を提供する。
 
-- **データの選定基準と使用目的**: 
+- **データ抽出基準と具体例 (Data Selection Criteria & Examples)**: 
   本研究では、実験の目的に応じてデータセットの抽出基準を変えている。
   1. **Full Dataset (事前評価およびプローブ学習用)**: モデルの基本的な行動評価（尤度推論）および内部表現に対する線形回帰プローブの学習には、広く一般的な感情表現をカバーするため、Affective（Peak強度）とNeutralのペアで構成される通常の分割（Train: 288ペア, Test: 96ペア等）を使用した。
   2. **Strict Matched Subset (因果介入用)**: 本研究の核心である Path Patching や Substitution (置換) テストでは、置換元のコンテキストが完全に同一であることを保証しなければ、非特異的な文脈の変化が結果の交絡要因となる。そのため、原データセットから **「同一の文脈（`pair_id`）に対して、`neutral` (中立), `moderate` (中程度), `peak` (強い感情) の3段階すべてが完全にアノテーションされているトリプレット」** のみを抽出した厳密なサブセットを作成した。この厳密な基準を満たしたサブセット（Train: 28ペア / 84サンプル、Test: 10ペア / 30サンプル）のうち、**Testデータの10ペア（30サンプル）**を因果的介入（セクション3.4の実験全般）の対象として使用した。介入実験は各トークンおよび層に対する網羅的な計算コストが極めて高いため、この厳選された高品質なデータセットを用いることで、交絡を排除しつつ計算可能とした。
+
+**【データ例 (Grief)】**
+- **Peak (Affective)**: "The lab was empty now. Twenty-two years of research. The server room had been cleared by facilities before she'd arrived Monday morning... (中略) ...she'd drawn a small star next to the line that would have changed everything, and now never would."
+- **Neutral (中立化)**: 同様の長さを持ちつつも、感情価が排除された事実描写。
 
   **Table 1: Dataset Splits and Derived Records (Full Dataset)**
   | Split | Unique pair_id | Unique stimuli | Derived records |
@@ -89,7 +94,7 @@ $$
 - **介入位置（target_pos）**: Qwen2.5-1.5BはBaseとInstructで同一のTokenizerを共有するが、モデル固有のchat templateを適用した場合、入力トークン列は完全に一致しない可能性がある。本実験のクロスモデル介入は、プロンプト末尾からの相対位置アライメント（`target_pos = prompt_length - 1`）に基づいており、chat templateの差に由来する寄与を完全には除外できないという限界がある。
 - **実装（Hooks）**: PyTorchの `register_forward_hook` を用いて、各層の対応するモジュール出力に対してフックを適用し、出力テンソルを指定位置のみ $h_{l,c}^{(Base)}$ で上書きした。
 - **統計的推論**: パッチング結果について、ペアレベルの平均を報告し、`pair_id` クラスターの再サンプリングによって不確実性区間を取得する。コンポーネントのランキングは記述的なものであり、多重比較補正を伴う推論が明記されない限り、個別のコンポーネントにおける統計的有意性を主張するものではない。
-- **評価指標**: パッチングの効果を分布全体の形状復元として評価するため、Baseモデルの尤度分布 $P_{Base}$ とパッチ後の尤度分布 $P_{Patch}$ 間の Valence周辺分布の1次元Wasserstein距離 ($WD_V$) を計算した。
+- **評価指標**: パッチングの効果を分布全体の形状復元として評価するため、Baseモデルの尤度分布 $P_{Base}$ とパッチ後の尤度分布 $P_{Patch}$ 間の Valence周辺分布の1次元Wasserstein距離 ($WD_V$) を計算した。また、全体形状として 2D EMD（Earth Mover's Distance）および JSD（Jensen-Shannon Divergence）も同時に計測した。
 - **コントロール**: 介入が非選択的な活性化の破壊（Destruction）を引き起こしているだけではないことを検証するため、以下の対照群を定義した。
 
   **Activation Patching Controls**
@@ -109,7 +114,7 @@ $$
 ## 4. Results
 
 ### 4.1 Post-Training Modifies Representational Geometry Without Erasure (H1 vs H2)
-Ridge回帰プローブによる評価の結果、Qwen2.5-1.5B BaseおよびInstructの両方において、人間のValenceラベルに対して高い held-out $R^2$ が得られ、感情強度の変化に対しても内部表現が追従することが確認された。これは事後学習によって情動情報が内部空間から完全に消去されるという Erasure仮説 (H1) への反証となる。
+Ridge回帰プローブによる評価の結果、Qwen2.5-1.5B BaseおよびInstructの両方において、人間のValenceラベルに対して高い held-out $R^2$ が得られ、感情強度の変化に対しても内部表現が追従することが確認された。具体的には、Phase 1.5のConfirmatory regressionにおいて、Instructモデルでも $R^2=0.318$ (F-statistic p<0.017) が得られ、内部表現の存在が確認された。これは事後学習によって情動情報が内部空間から完全に消去されるという Erasure仮説 (H1) への反証となる。
 
 一方、交差デコーディング（Cross-decoding）においては、Direct Transfer および Orthogonal Procrustes によるアライメントでは予測性能が著しく低下した。特に Direct Transfer での極端な負の $R^2$ 値（例: Layer 12で -132.80）は、クロスモデルのキャリブレーションなしでプローブを適用すると、ターゲット平均を予測するベースラインよりもはるかに悪い結果になることを示している。これはモデル表現間のスケールとオフセットの大幅な不整合と整合的である。ただし、実装やプロンプトに関連する他のクロスモデル不整合の要因を完全に排除することはできない。
 しかし、Train split（576 stimuli / 288 pair_id）を用いた正則化線形写像（Ridge Alignment）を適用すると、独立したコントロールターゲット（Token count, Narrative richness等）における回復率（$R^2 \approx 0.05-0.12$）と比較して、Valence（$R^2 \approx 0.58$）の予測性能が顕著に回復した（Table 2）。
@@ -126,19 +131,13 @@ Ridge回帰プローブによる評価の結果、Qwen2.5-1.5B BaseおよびInst
 
 この結果は、事後学習に伴う表現の変容が単なる剛体回転ではなく、非直交的かつ部分的に線形整列可能な空間の歪み（Representation Transformation, H2）であることを示している。
 
-![Cross Decoding R2](file:///mnt/nas/home/hiromi/.gemini/antigravity-ide/brain/5af8c3f8-4701-4aeb-abff-f62a3997e299/plots/cross_decoding_r2.png)
-*Figure 1: Cross-decoding performance ($R^2$) across layers. Ridge alignment recovers predictability, indicating non-orthogonal representation transformation.*
-
-![Cross Decoding IBC](file:///mnt/nas/home/hiromi/.gemini/antigravity-ide/brain/5af8c3f8-4701-4aeb-abff-f62a3997e299/plots/cross_decoding_ibc.png)
-*Figure 2: Internal-Behavioral Coupling (IBC) evaluated across models.*
-
 ### 4.2 Descriptive Evidence against Global Suppression (H3)
-全対象層における交互作用係数の符号は一様に負ではなく、global-suppression accountの方向予測とは一致しなかった。しかし、FDR補正後に有意なlayer-by-model interactionは確認されなかった。したがって、「全層・全次元でreadout gainが下がる」という強い一様抑制（Global Suppression）仮説は支持されない（Appendix C 参照）。本分析は一様な負方向の結合変化を支持しない一方、層や次元に依存した複雑な再写像（Remapping）の存在については記述的・探索的な示唆に留まる。
+全対象層における交互作用係数の符号は一様に負ではなく、global-suppression accountの方向予測とは一致しなかった。例えば Layer 12 Valence では $\beta_3 = 0.752$ (p=0.027, FDR q=0.272)、Layer 24 Valence では $\beta_3 = -0.028$ (p=0.940) であり、FDR補正後に有意なlayer-by-model interactionは確認されなかった。したがって、「全層・全次元でreadout gainが下がる」という強い一様抑制（Global Suppression）仮説は支持されない（Appendix C 参照）。本分析は一様な負方向の結合変化を支持しない一方、層や次元に依存した複雑な再写像（Remapping）の存在については記述的・探索的な示唆に留まる。
 
 ### 4.3 Distributed Causal Contributions via Activation Patching (H4)
 Cross-model Activation Patching の結果、中間層のコンポーネントを Base から Instruct へパッチすることで、Instruct の自己報告分布（期待Valence $E_V$）は変動した。スクリーニングにおいて最大の効果量をもたらした上位コンポーネントを Table 3 に示す。ここで、$\Delta WD_V = WD_V(P_{Patch}, P_{Base}) - WD_V(P_{Inst}, P_{Base})$ であり、負の値は分布がBase型へ改善したことを示す。
 
-**Table 3: Top Components Ranked by $|\Delta WD_V|$ in Single Component Patching**
+**Table 3: Top Components Ranked by $|\Delta WD_V|$ in Single Component Patching (Phase 7 Strict)**
 | Component     | Effect Size ($\Delta V$) | $WD_{V(Inst,Base)}$ | $WD_{V(Patch,Base)}$ | $\Delta WD_V$ |
 |---------------|--------------------------|------------------|-------------------|-------------|
 | Layer 10 `mlp`| -0.091                   | 0.312            | 0.125             | -0.187      |
@@ -149,21 +148,13 @@ Cross-model Activation Patching の結果、中間層のコンポーネントを
 
 しかし、単一のコンポーネントパッチングによって Baseモデルの分布が完全に回復することはなく、WDによる評価でも完全な Base 型への回帰には至らなかった。さらに、対応しない中性刺激をsourceとする unmatched-neutral control パッチングは、分布の非選択的な破壊（OOD化による中立への崩壊）をもたらした。
 
-![Activation Patching](file:///mnt/nas/home/hiromi/.gemini/antigravity-ide/brain/5af8c3f8-4701-4aeb-abff-f62a3997e299/plots/activation_patching_plot.png)
-*Figure 3: Activation Patching results showing the shift in expected Valence when patching Base activations into Instruct.*
-
 2つのコンポーネントを同時介入した Synergy Patching の結果は、各コンポーネントの効果がおおむね加算的（Additive）であることを示し、スクリーニングされたコンポーネント内において単一の十分な感情抑制ボトルネックが存在するという単純な見方への反証となる。これらの証拠は、representation-to-report mapping の変化に対する複数コンポーネントの分離可能な寄与（Distributed Remapping, H4）と整合する。
 
 ### 4.4 Non-linear Patch-Response Revealed by Dose-Response Patching
-パッチ強度の連続的変化に対する応答を確認するため、補間パッチング（$\lambda$-dose-response patching）を実施した。Instructの活性化をBaseの活性化へと段階的（$\lambda \in [0, 1]$）にブレンドしたところ、自己報告の期待値 $E_V$ の推移は必ずしも線形ではなく、特定のコンポーネントにおいては閾値的な反応を示した。
-
-![Dose-Response Patching](file:///mnt/nas/home/hiromi/.gemini/antigravity-ide/brain/5af8c3f8-4701-4aeb-abff-f62a3997e299/plots/lambda_dose_response_plot.png)
-*Figure 4: Non-linear response of expected Valence under continuous lambda interpolation.*
-
-この非線形な応答は、パッチされた活性化と制約された自己報告分布間の関係が単一の線形利得（Gain）では適切に特徴付けられないことを示している。ただし、これが特定の出力トークンに対するゲーティング（output-token gating）であると確証するには、後段のロジット分解や unembedding swap 等の追加解析が必要である。
+パッチ強度の連続的変化に対する応答を確認するため、補間パッチング（$\lambda$-dose-response patching; Phase 9）を実施した。Instructの活性化をBaseの活性化へと段階的（$\lambda \in [0, 1]$）にブレンドしたところ、自己報告の期待値 $E_V$ の推移は必ずしも線形ではなく、特定のコンポーネント（例: 10_mlp, 14_attn）においては閾値的な反応を示した。この非線形な応答は、パッチされた活性化と制約された自己報告分布間の関係が単一の線形利得（Gain）では適切に特徴付けられないことを示している。
 
 ### 4.5 Late-Residual Substitution Test under Strict Identical Prompts
-我々は、同一にトークン化されたプロンプト条件下で、厳密な後期残差置換テスト（Late-residual substitution test）を実施した。選択したソースコンポーネントについて、対応するBaseモデル由来の寄与を最終Transformerブロックの入力に注入し、結果として生じる制約付き自己報告分布の変化を測定した。この介入は、選択した寄与が後期のresidual streamに表現された場合、最終ブロックや出力に直接的な影響を与えるのに十分であるかどうかをテストするものである。これは、元のソースコンポーネントから中間層を経由するすべての因果経路を隔離（isolate）するものではない。
+我々は、同一にトークン化されたプロンプト条件下で、厳密な後期残差置換テスト（Late-residual substitution test; Phase 8）を実施した。選択したソースコンポーネントについて、対応するBaseモデル由来の寄与を最終Transformerブロックの入力に注入し、結果として生じる制約付き自己報告分布の変化を測定した。この介入は、選択した寄与が後期のresidual streamに表現された場合、最終ブロックや出力に直接的な影響を与えるのに十分であるかどうかをテストするものである。これは、元のソースコンポーネントから中間層を経由するすべての因果経路を隔離（isolate）するものではない。
 
 具体的には、特定の候補コンポーネント（例: $MLP_{10}$）について、Baseモデルでの活性化をキャッシュし、Instructモデルのフォワードパスにおいて「最終層（Layer 27）の直前の入力（$h_{26}$）」に対して局所的にBase由来の活性化成分を加算（Substitution）した。
 
@@ -178,7 +169,7 @@ Cross-model Activation Patching の結果、中間層のコンポーネントを
 | `mlp_15` random source | 0.0143 | [0.0084, 0.0202] | 0.0037 | [-0.0021, 0.0087] | — |
 *(Note: 95% CIs and differences were calculated using 10,000 iterations of pair_id cluster bootstrap.)*
 
-Table 4 に示すように、単一コンポーネント全体をパッチした場合（例：`res_10` において $\Delta WD_V \approx -0.162$、Table 3参照）と比較して、最終層の入力に対するSubstitution介入は、分布の変動量が極めて小さく（$\Delta WD_V \approx 0$、$\Delta E[V] \approx 0$）、Base型分布への回復を全く示さなかった。
+Table 4 に示すように、単一コンポーネント全体をパッチした場合（例：`mlp_10` において $\Delta WD_V \approx -0.187$、Table 3参照）と比較して、最終層の入力に対するSubstitution介入は、分布の変動量が極めて小さく（$\Delta WD_V \approx 0$、$\Delta E[V] \approx 0$）、Base型分布への回復を全く示さなかった。
 テストされた後期残差置換は、分布にわずかな変化しかもたらさなかった。この結果は、選択された寄与が、テストされたレシーバーにおいてBase型の自己報告分布を回復させるのに十分であるという証拠を提供するものではない。
 
 ### 4.6 Unembedding / RMSNorm Swap Analysis: Locus of Self-Report Neutralization
@@ -305,16 +296,4 @@ $$
 ### F. 8-Condition Swap 実装の詳細
 Table 5のSwap Analysisにおける実装の定義は以下の通りである。
 - **RMSNorm**: Qwen2.5アーキテクチャの最終正規化層（`model.norm`）は通常のLayerNormではなくRMSNormである。本実験におけるスワップ操作では、最終RMSNormの学習可能な scale ベクトル（`weight`）のみを交差させた。$\epsilon$ を含むRMSNormのハイパーパラメータやアーキテクチャは Base と Instruct 間で同一であり、交差時にも固定された。
-- **Unembedding (lm_head)**: スワップ対象は出力直前の線形写像層（`lm_head`）の重み（`weight`）である。また、候補文字列（81候補）のシーケンス尤度を評価するにあたり、対象となるすべての候補トークン位置において、選択した特定の `lm_head` と `RMSNorm` の組み合わせを一貫して適用し、Teacher-forcingによりロジットを算出した。したがって、評価された $E[V]$ は最初のValence数値トークンのみならず、81の候補文字列全体の生成尤度にわたってスワップ状態が維持された結果を反映している。
-
-### Appendix G: 2D Joint-Distribution Metrics
-
-#### G.1 Jensen-Shannon Divergence (JSD)
-81の候補状態に対するシーケンス確率分布 $P$ および $Q$ の間の Jensen-Shannon Divergence は以下のように計算された：
-$$ \mathrm{JSD}(P\|Q) = \frac{1}{2}\mathrm{KL}(P\|M) + \frac{1}{2}\mathrm{KL}(Q\|M) $$
-ここで、$M = \frac{1}{2}(P+Q)$ であり、$\mathrm{KL}$ は Kullback-Leibler ダイバージェンスである。計算には自然対数を使用し、JSDの範囲は 0 から $\ln(2)$ となる。言語モデルの尤度は本質的にゼロではない正の確率にマッピングされるため、分布 $P$ と $Q$ は平滑化（smoothing）を行わず、81の候補文字列全体で厳密に正規化された。
-
-#### G.2 2D Earth Mover's Distance (2D EMD)
-2D Earth Mover's Distance (2D EMD) または 2D Wasserstein Distance は、ある81状態の同時確率分布 $P(V,A)$ を別の分布 $Q(V,A)$ に変換するコストを定量化する。我々は、2次元Valence-Arousalグリッドにおける候補状態間のユークリッド距離を用いて、グラウンドコスト行列 $M$ を定義した：
-$$ d((v,a),(v',a')) = \sqrt{(v-v')^2+(a-a')^2} $$
-ここで $v, a \in \{1, 2, \dots, 9\}$ である。最適輸送計画（optimal transport plan）および厳密な2D EMDは、Python Optimal Transport（`pot`）ライブラリの `ot.emd2` ソルバーを使用し、81状態全体の厳密な同時確率分布に基づいて計算された。
+- **Unembedding (lm_head)**: スワップ対象は出力直前の線形写像層（`lm_head`）の重み（`weight`）である。また、候補文字列（81候補）のシーケンス尤度を評価するにあたり、対象となるすべての候補トークンに対して同一のUnembedding重みが適用される。
