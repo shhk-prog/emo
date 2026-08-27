@@ -39,15 +39,12 @@ Mechanistic Interpretabilityにおける因果的プロービング手法の信�
 ## 3. Methodology
 
 ### 3.1 Dataset and Evaluation Protocol
-感情語彙の存在による単純な分類（Lexical heuristic）を排除し、純粋な文脈からの情動推論を評価するため、**AIPsy-Affectデータセット**を使用した。このデータセットは、人物・設定・長さを共有しつつ、感情価のみが異なる臨床ヴィネットの最小対（Affective / Neutral）を提供する。
-- **データ分割と統計**: モデル評価およびプローブ学習におけるデータ漏洩（Data leakage）を防ぐため、最初に固有の刺激ペア（Unique pair_id）単位で厳格な Group Split (Train 60%, Dev 20%, Test 20%) を行った。その後、各刺激からプローブ用の層別表現、プロンプト変種、および81候補の尤度を派生させた。これにより生成された合計 106,864 件の派生レコード（Model-evaluation records）を用いた。
-  
-  **Table 1: Dataset Splits and Derived Records**
-  | Split | Unique pair_id | Unique stimuli | Derived records |
-  |-------|----------------|----------------|-----------------|
-  | Train | 288            | 576            | 62,612          |
-  | Dev   | 96             | 192            | 22,203          |
-  | Test  | 96             | 192            | 22,049          |
+感情語彙の存在による単純な分類（Lexical heuristic）を排除し、純粋な文脈からの情動推論を評価するため、**AIPsy-Affectデータセット (`keidolabs/aipsy-affect`)** を使用した。このデータセットは、人物・設定・長さを共有しつつ、感情価や強度のみが異なる臨床ヴィネットの最小対（Affective / Neutral）を提供する。
+
+- **データの選定基準と使用目的**: 
+  本研究では、実験の目的に応じてデータセットの抽出基準を変えている。
+  1. **Full Dataset (事前評価およびプローブ学習用)**: モデルの基本的な行動評価（尤度推論）および内部表現に対する線形回帰プローブの学習には、広く一般的な感情表現をカバーするため、Affective（Peak強度）とNeutralのペアで構成される通常の分割（Train: 288ペア, Test: 96ペア等）を使用した。
+  2. **Strict Matched Subset (因果介入用)**: 本研究の核心である Path Patching や Substitution (置換) テストでは、置換元のコンテキストが完全に同一であることを保証しなければ、非特異的な文脈の変化が結果の交絡要因となる。そのため、原データセットから **「同一の文脈（`pair_id`）に対して、`neutral` (中立), `moderate` (中程度), `peak` (強い感情) の3段階すべてが完全にアノテーションされているトリプレット」** のみを抽出した厳密なサブセットを作成した。この厳密な基準を満たしたサブセット（Train: 28ペア / 84サンプル、Test: 10ペア / 30サンプル）のうち、**Testデータの10ペア（30サンプル）**を因果的介入（セクション3.4の実験全般）の対象として使用した。介入実験は各トークンおよび層に対する網羅的な計算コストが極めて高いため、この厳選された高品質なデータセットを用いることで、交絡を排除しつつ計算可能とした。
 
 - **モデルと推論設定**: Qwen2.5-1.5B (Base) および Qwen2.5-1.5B-Instruct。全推論は NVIDIA H100 GPU 上で実施した。離散生成のパース失敗を回避するため、生成値ではなくteacher-forced sequence likelihoodを採用した（HuggingFace Transformersの `apply_chat_template` に従いプロンプトを構築後、モデル本来のlogitsを用いて尤度スコアリングを行った）。詳細なハードウェア環境、ライブラリバージョン、モデルリビジョン等の再現性に関する設定は Appendix E に記載する。
 
