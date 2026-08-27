@@ -1,7 +1,7 @@
 # When Affective Self-Reports Do Not Trace Internal Representations: Post-Training-Associated Changes in LLMs
 
 ## Abstract
-In our preliminary evaluations and prior work, some post-trained Large Language Models (LLMs) exhibit flattened or neutralized affective self-reports, despite retaining the ability to process emotional context. It remains unclear whether this neutralization stems from the complete erasure of internal affective representations (Erasure), a transformation of the representational geometry (Transformation), or a uniform suppression of the readout pathway (Global Suppression). In this paper, we systematically investigate the causal pathways from internal affective representations to behavioral self-reports in Qwen2.5-1.5B (Base and Instruct models) using a keyword-free minimal-pair dataset. We preregistered three primary competing accounts: erasure, representational transformation, and global suppression. We then evaluated whether the intervention results were consistent with a distributed-contribution account of representation-to-report mapping. Our observed within-model decodability and partially recoverable cross-model alignment provide evidence against the complete erasure of probe-defined affect-relevant information. Furthermore, conditional coupling analyses did not support a uniform negative shift after post-training, and component interventions identified multiple separable causal contributions consistent with distributed changes in representation-to-report mapping. A late-residual substitution test under strict identical prompts produced only small changes in the constrained self-report distribution and did not recover Base-like distributions. This negative result constrains simple late-residual shortcut accounts and motivates further investigation of distributed downstream pathways. These results motivate the hypothesis that post-training-associated changes alter the conditional mapping between internal affect-relevant coordinates and constrained self-report distributions, highlighting a dissociation between a model's internal states and its behavioral claims.
+In our preliminary evaluations and prior work, some post-trained Large Language Models (LLMs) exhibit flattened or neutralized affective self-reports, despite retaining the ability to process emotional context. It remains unclear whether this neutralization stems from the complete erasure of internal affective representations (Erasure), a transformation of the representational geometry (Transformation), or a uniform suppression of the readout pathway (Global Suppression). In this paper, we systematically investigate the causal pathways from internal affective representations to behavioral self-reports in Qwen2.5-1.5B (Base and Instruct models) using a keyword-free minimal-pair dataset. We preregistered three primary competing accounts: erasure, representational transformation, and global suppression. We then evaluated whether the intervention results were consistent with a distributed-contribution account of representation-to-report mapping. Our observed within-model decodability and partially recoverable cross-model alignment provide evidence against the complete erasure of probe-defined affect-relevant information. Activation steering further demonstrated that self-reports could be causally restored by intervening on contrastive directions, while stress tests confirmed that the neutralization is robust against temperature scaling and natural language formatting. Furthermore, conditional coupling analyses did not support a uniform negative shift after post-training, and component interventions identified multiple separable causal contributions consistent with distributed changes in representation-to-report mapping. A late-residual substitution test under strict identical prompts produced only small changes in the constrained self-report distribution and did not recover Base-like distributions. This negative result constrains simple late-residual shortcut accounts and motivates further investigation of distributed downstream pathways. These results motivate the hypothesis that post-training-associated changes alter the conditional mapping between internal affect-relevant coordinates and constrained self-report distributions, highlighting a dissociation between a model's internal states and its behavioral claims.
 
 ---
 
@@ -131,11 +131,22 @@ Ridge回帰プローブによる評価の結果、Qwen2.5-1.5B BaseおよびInst
 
 この結果は、事後学習に伴う表現の変容が単なる剛体回転ではなく、非直交的かつ部分的に線形整列可能な空間の歪み（Representation Transformation, H2）であることを示している。
 
-### 4.2 Descriptive Evidence against Global Suppression (H3)
+さらに、表現類似度分析（RSA）の結果、BaseとInstruct間の層ごとの表現の類似度（RSA_IS）は中間層（Layer 10〜18付近）において特に負の相関（例：Layer 10で -0.176、Layer 18で -0.196）を示し、事後学習によって特定の深さにおいて表現が大きく再構成されていることが支持された。また、Instructモデルの自己報告（期待Valence $E_V$）に対する統制重回帰分析において、内部表現のValence投影強度（$z_V$）や表層辞書VAD（$V_H$）、文長（word_count）を同時に投入したところ、$z_V$ の寄与は有意ではなく（p=0.676）、表層的なテキスト属性（$V_H$, p=0.003）がより強い予測力を持っていた（Adjusted $R^2=0.239$）。これは、内部空間に情動表現が残存している（Erasureではない）にもかかわらず、それがInstructモデルの自己報告には直接利用されていないというSystem Dissociationを裏付けるものである。
+
+### 4.2 Activation Steering Reverses the Self-Report in Instruct
+内部表現を操作することで自己報告を変化させられるか（因果的なコントロール可能性）を検証するため、Training split（感情強度Peak）を用いてValenceの対立方向（Contrastive Direction）を算出し、Instructモデルのプロンプト最終トークン位置における隠れ状態にステアリングベクトル（$\alpha \times \sigma \times \text{direction}$）を加算した。
+その結果、層20などで $\alpha$ を -3.0 から +3.0 まで変化させると、自己報告の期待Valence（$E_V$）もステアリング強度に比例して中立値（5.0）から脱却し、負方向および正方向へ大きくシフトした（Phase 2 Steering）。無作為な方向（Random direction）へのステアリングではこのような規則的なシフトは観察されなかった。この因果的介入の成功は、Instructモデルが内部的情動次元を完全に喪失したわけではなく、適切なベクトル加算によって自己報告の出力分布を回復・操作可能であることを示している。
+
+### 4.3 Robustness of the Neutralization (Temperature and Output Gating)
+自己報告の平坦化（collapse）が、デコーディング温度や特定のJSONフォーマット制約に起因するアーティファクトではないことを確認するため、ストレステストを実施した。
+第一に、Temperature Scaling（$\tau=0.2 \dots 5.0$）を行って尤度をスケーリングしても、Instructモデルにおける中立状態（Valence=5, Arousal=5）の確率 $p_{55}$ は高く維持され、分布の根本的な崩壊は解消されなかった。
+第二に、JSONフォーマットという構造的な出力制約（Output Gating）が中立化の原因である可能性を排除するため、自然言語の自由記述（Natural Language）による自己報告プロンプトでテストした。その結果、Instructモデルは自然言語においても中立的な尤度分布（$E_V \approx 5.0$ 付近）を出力し続けた。これらは、事後学習に伴う中立化が単なる温度設定やプロンプトフォーマットのアーティファクトではなく、より堅牢な内部の出力マッピング変化であることを示唆している。
+
+### 4.4 Descriptive Evidence against Global Suppression (H3)
 全対象層における交互作用係数の符号は一様に負ではなく、global-suppression accountの方向予測とは一致しなかった。例えば Layer 12 Valence では $\beta_3 = 0.752$ (p=0.027, FDR q=0.272)、Layer 24 Valence では $\beta_3 = -0.028$ (p=0.940) であり、FDR補正後に有意なlayer-by-model interactionは確認されなかった。したがって、「全層・全次元でreadout gainが下がる」という強い一様抑制（Global Suppression）仮説は支持されない（Appendix C 参照）。本分析は一様な負方向の結合変化を支持しない一方、層や次元に依存した複雑な再写像（Remapping）の存在については記述的・探索的な示唆に留まる。
 
-### 4.3 Distributed Causal Contributions via Activation Patching (H4)
-Cross-model Activation Patching の結果、中間層のコンポーネントを Base から Instruct へパッチすることで、Instruct の自己報告分布（期待Valence $E_V$）は変動した。スクリーニングにおいて最大の効果量をもたらした上位コンポーネントを Table 3 に示す。ここで、$\Delta WD_V = WD_V(P_{Patch}, P_{Base}) - WD_V(P_{Inst}, P_{Base})$ であり、負の値は分布がBase型へ改善したことを示す。
+### 4.5 Distributed Causal Contributions via Activation Patching (H4)
+Cross-model Activation Patching の結果、中間層のコンポーネントを Base から Instruct へパッチすることで、Instruct の自己報告分布（期待Valence $E_V$）は変動した。特に Phase 4 (Circuit Patching) で特定された Layer 20 MLP のような個別モジュールへの介入は分布の変動を引き起こしたが、全体的なスクリーニングにおいて最大の効果量をもたらした上位コンポーネントを Table 3 に示す。ここで、$\Delta WD_V = WD_V(P_{Patch}, P_{Base}) - WD_V(P_{Inst}, P_{Base})$ であり、負の値は分布がBase型へ改善したことを示す。
 
 **Table 3: Top Components Ranked by $|\Delta WD_V|$ in Single Component Patching (Phase 7 Strict)**
 | Component     | Effect Size ($\Delta V$) | $WD_{V(Inst,Base)}$ | $WD_{V(Patch,Base)}$ | $\Delta WD_V$ |
@@ -150,10 +161,10 @@ Cross-model Activation Patching の結果、中間層のコンポーネントを
 
 2つのコンポーネントを同時介入した Synergy Patching の結果は、各コンポーネントの効果がおおむね加算的（Additive）であることを示し、スクリーニングされたコンポーネント内において単一の十分な感情抑制ボトルネックが存在するという単純な見方への反証となる。これらの証拠は、representation-to-report mapping の変化に対する複数コンポーネントの分離可能な寄与（Distributed Remapping, H4）と整合する。
 
-### 4.4 Non-linear Patch-Response Revealed by Dose-Response Patching
+### 4.6 Non-linear Patch-Response Revealed by Dose-Response Patching
 パッチ強度の連続的変化に対する応答を確認するため、補間パッチング（$\lambda$-dose-response patching; Phase 9）を実施した。Instructの活性化をBaseの活性化へと段階的（$\lambda \in [0, 1]$）にブレンドしたところ、自己報告の期待値 $E_V$ の推移は必ずしも線形ではなく、特定のコンポーネント（例: 10_mlp, 14_attn）においては閾値的な反応を示した。この非線形な応答は、パッチされた活性化と制約された自己報告分布間の関係が単一の線形利得（Gain）では適切に特徴付けられないことを示している。
 
-### 4.5 Late-Residual Substitution Test under Strict Identical Prompts
+### 4.7 Late-Residual Substitution Test under Strict Identical Prompts
 我々は、同一にトークン化されたプロンプト条件下で、厳密な後期残差置換テスト（Late-residual substitution test; Phase 8）を実施した。選択したソースコンポーネントについて、対応するBaseモデル由来の寄与を最終Transformerブロックの入力に注入し、結果として生じる制約付き自己報告分布の変化を測定した。この介入は、選択した寄与が後期のresidual streamに表現された場合、最終ブロックや出力に直接的な影響を与えるのに十分であるかどうかをテストするものである。これは、元のソースコンポーネントから中間層を経由するすべての因果経路を隔離（isolate）するものではない。
 
 具体的には、特定の候補コンポーネント（例: $MLP_{10}$）について、Baseモデルでの活性化をキャッシュし、Instructモデルのフォワードパスにおいて「最終層（Layer 27）の直前の入力（$h_{26}$）」に対して局所的にBase由来の活性化成分を加算（Substitution）した。
@@ -172,7 +183,7 @@ Cross-model Activation Patching の結果、中間層のコンポーネントを
 Table 4 に示すように、単一コンポーネント全体をパッチした場合（例：`mlp_10` において $\Delta WD_V \approx -0.187$、Table 3参照）と比較して、最終層の入力に対するSubstitution介入は、分布の変動量が極めて小さく（$\Delta WD_V \approx 0$、$\Delta E[V] \approx 0$）、Base型分布への回復を全く示さなかった。
 テストされた後期残差置換は、分布にわずかな変化しかもたらさなかった。この結果は、選択された寄与が、テストされたレシーバーにおいてBase型の自己報告分布を回復させるのに十分であるという証拠を提供するものではない。
 
-### 4.6 Unembedding / RMSNorm Swap Analysis: Locus of Self-Report Neutralization
+### 4.8 Unembedding / RMSNorm Swap Analysis: Locus of Self-Report Neutralization
 前節までの結果から、感情自己報告の中立化が特定コンポーネントからの直接経路（Direct Readout）では説明できないことが判明した。そこで、中立化が最終出力段の重み層（RMSNorm および lm_head）の更新だけで説明できるか、または pre-output residual state の差がより強く寄与するかを検証するため、最終層におけるResidual表現、RMSNorm、Unembedding (lm_head) のパラメータ群を交差させた8条件の交差検証（Swap Analysis）を実施した。なお、スワップ操作の詳細な定義（全候補トークンへの適用やRMSNormの仕様等）については Appendix F に記載する。
 
 **Table 5: 8-Condition Swap Results for Expected Valence ($E[V]$) and Distribution Shift**
@@ -204,6 +215,8 @@ Table 5に示す通り、期待Valence（$E[V]$）の平均値は各strict-swap�
 |------|------------|------|
 | 完全Erasureではない (Against H1) | Within-model probe, intensity response, Ridge alignmentによる部分的回復 | Probe-defined情報に限定される |
 | 単純な直交変換では不十分（H2の非直交的変換版を支持） | Direct / Orthogonal Procrustesの失敗とRidge alignmentの部分回復 | Normalization mismatchの寄与が残る |
+| 内部状態と自己報告は因果的に分離可能 (System Dissociation) | 統制回帰分析においてプローブ投影強度よりも表層VADスコアが強く予測し、Activation Steeringで出力分布を操作可能だったこと | 抽出されたContrastive Directionの厳密な意味的解釈 |
+| 中立化は温度や形式のアーティファクトではない | Temperature ScalingおよびNatural Language gating下でも分布が中立に留まったこと | JSON以外の全形式の網羅ではない |
 | Uniform global suppressionではない (Against H3) | $\beta_3$ は負に固定されず、FDR有意な層別効果なし | 中間層の微小な非一貫性は排除できず |
 | Single-component rescueではない | Full component sweep と Synergy Patching が加算的 | 網羅的ではない |
 | 検査したfinal RMSNorm / unembeddingのみの説明は支持されない | Strict direct contribution null test、および8-condition swapで出力分布がRMSNorm/lm_head sourceよりfinal residual sourceを追跡したこと | 最終residual差を生成する上流component・nonlinear mediator pathは未同定 |
@@ -214,7 +227,7 @@ Table 5に示す通り、期待Valence（$E[V]$）の平均値は各strict-swap�
 ---
 
 ## 6. Conclusion
-Qwen2.5-1.5B BaseおよびInstructでは、本研究のプローブで定義した情動関連情報が各モデル内で復元可能であり、刺激強度に依存した内部応答も観測された。クロスモデルの直接転移および直交転移は失敗した一方、正則化線形アライメントは独立したheld-outデータでの予測を部分的に回復した。この結果は、完全な表現消去ではなく、post-training-associatedな非直交的かつ部分的に線形整列可能な表現変換と整合する。条件付き混合効果モデルは、評価した層・Valence readout・prompt条件におけるinternal-to-self-report couplingの一様な負方向低下を支持しなかった。スクリーニング対象の中間層・componentでは、Base-to-Instructの単一component patchingは自己報告分布を変化させたが、Base型分布を回復しなかった。対応しないsource activationやrandom controlは主に非選択的な分布破壊を生じ、二component介入は概ね加算的で、わずかに減衰した効果を示した。以上は、post-training-associatedなrepresentation-to-report mapping変化に対する複数componentの分離可能な寄与と整合する。テストされた後期残差置換はわずかな変化しかもたらさず、Base型の分布を回復しなかった。これにより単純なshallow-readoutによる説明は制限される。8条件スワップ交差検証はさらに、期待Valenceの分布が最終的なRMSNormやUnembeddingマトリクスのソースよりも、最終的な残差表現のソースに強く追従することを示した。この結果は、中立化に関する単純な出力層のみの説明を弱める一方で、上流コンポーネントや非線形媒介経路の寄与については未解決のまま残している。
+Qwen2.5-1.5B BaseおよびInstructでは、本研究のプローブで定義した情動関連情報が各モデル内で復元可能であり、刺激強度に依存した内部応答も観測された。クロスモデルの直接転移および直交転移は失敗した一方、正則化線形アライメントは独立したheld-outデータでの予測を部分的に回復した。加えて、Activation Steeringにより自己報告のシフトが因果的に引き起こされ、出力の平坦化が温度やJSON制約のアーティファクトではないことも確認された。これらの結果は、完全な表現消去ではなく、post-training-associatedな非直交的かつ部分的に線形整列可能な表現変換およびSystem Dissociationと整合する。条件付き混合効果モデルは、評価した層・Valence readout・prompt条件におけるinternal-to-self-report couplingの一様な負方向低下を支持しなかった。スクリーニング対象の中間層・componentでは、Base-to-Instructの単一component patchingは自己報告分布を変化させたが、Base型分布を回復しなかった。対応しないsource activationやrandom controlは主に非選択的な分布破壊を生じ、二component介入は概ね加算的で、わずかに減衰した効果を示した。以上は、post-training-associatedなrepresentation-to-report mapping変化に対する複数componentの分離可能な寄与と整合する。テストされた後期残差置換はわずかな変化しかもたらさず、Base型の分布を回復しなかった。これにより単純なshallow-readoutによる説明は制限される。8条件スワップ交差検証はさらに、期待Valenceの分布が最終的なRMSNormやUnembeddingマトリクスのソースよりも、最終的な残差表現のソースに強く追従することを示した。この結果は、中立化に関する単純な出力層のみの説明を弱める一方で、上流コンポーネントや非線形媒介経路の寄与については未解決のまま残している。
 
 ---
 ## Appendix
@@ -296,4 +309,16 @@ $$
 ### F. 8-Condition Swap 実装の詳細
 Table 5のSwap Analysisにおける実装の定義は以下の通りである。
 - **RMSNorm**: Qwen2.5アーキテクチャの最終正規化層（`model.norm`）は通常のLayerNormではなくRMSNormである。本実験におけるスワップ操作では、最終RMSNormの学習可能な scale ベクトル（`weight`）のみを交差させた。$\epsilon$ を含むRMSNormのハイパーパラメータやアーキテクチャは Base と Instruct 間で同一であり、交差時にも固定された。
-- **Unembedding (lm_head)**: スワップ対象は出力直前の線形写像層（`lm_head`）の重み（`weight`）である。また、候補文字列（81候補）のシーケンス尤度を評価するにあたり、対象となるすべての候補トークンに対して同一のUnembedding重みが適用される。
+- **Unembedding (lm_head)**: スワップ対象は出力直前の線形写像層（`lm_head`）の重み（`weight`）である。また、候補文字列（81候補）のシーケンス尤度を評価するにあたり、対象となるすべての候補トークン位置において、選択した特定の `lm_head` と `RMSNorm` の組み合わせを一貫して適用し、Teacher-forcingによりロジットを算出した。したがって、評価された $E[V]$ は最初のValence数値トークンのみならず、81の候補文字列全体の生成尤度にわたってスワップ状態が維持された結果を反映している。
+
+### Appendix G: 2D Joint-Distribution Metrics
+
+#### G.1 Jensen-Shannon Divergence (JSD)
+81の候補状態に対するシーケンス確率分布 $P$ および $Q$ の間の Jensen-Shannon Divergence は以下のように計算された：
+$$ \mathrm{JSD}(P\|Q) = \frac{1}{2}\mathrm{KL}(P\|M) + \frac{1}{2}\mathrm{KL}(Q\|M) $$
+ここで、$M = \frac{1}{2}(P+Q)$ であり、$\mathrm{KL}$ は Kullback-Leibler ダイバージェンスである。計算には自然対数を使用し、JSDの範囲は 0 から $\ln(2)$ となる。言語モデルの尤度は本質的にゼロではない正の確率にマッピングされるため、分布 $P$ と $Q$ は平滑化（smoothing）を行わず、81の候補文字列全体で厳密に正規化された。
+
+#### G.2 2D Earth Mover's Distance (2D EMD)
+2D Earth Mover's Distance (2D EMD) または 2D Wasserstein Distance は、ある81状態の同時確率分布 $P(V,A)$ を別の分布 $Q(V,A)$ に変換するコストを定量化する。我々は、2次元Valence-Arousalグリッドにおける候補状態間のユークリッド距離を用いて、グラウンドコスト行列 $M$ を定義した：
+$$ d((v,a),(v',a')) = \sqrt{(v-v')^2+(a-a')^2} $$
+ここで $v, a \in \{1, 2, \dots, 9\}$ である。最適輸送計画（optimal transport plan）および厳密な2D EMDは、Python Optimal Transport（`pot`）ライブラリの `ot.emd2` ソルバーを使用し、81状態全体の厳密な同時確率分布に基づいて計算された。
