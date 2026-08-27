@@ -1,32 +1,18 @@
-# Environments
-.env
 .venv/
-env/
 venv/
-ENV/
 
-# Python cache
 __pycache__/
-*.py[cod]
-*$py.class
-.pytest_cache/
-.ruff_cache/
+*.pyc
 
-# Data and Results
-data/raw/*
-!data/raw/.gitkeep
-data/interim/*
-!data/interim/.gitkeep
-results/raw/*
-!results/raw/.gitkeep
-# Allow tracking of aggregated results, tables, and figures
-# as per AGENTS.md rule 9.1 (Git管理するもの: 集計表、論文用図表)
+# 実験生成物
+v1/results/
 
-# Logs and databases
-*.log
-*.sqlite
 
-# IDEs
-.vscode/
-.idea/
-*.swp
+# モデル・チェックポイント
+models/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.safetensors
