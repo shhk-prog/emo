@@ -318,18 +318,22 @@ $$\mathrm{Recovery} = 1 - \frac{D_{\mathrm{EMD}}(P_{\mathrm{patch}}, P_{\mathrm{
 3. **無相関の頑健性**:
    層別probe $R^2$と因果回復率の間には、いずれのコンポーネントにおいても単調関係は検出されなかった（MLP: Spearman $\rho = 0.2956, p = 0.1268$; ATTN: $\rho = 0.0230, p = 0.9076$; RESID: $\rho = -0.0394, p = 0.8422$）。
 
-さらに、本研究では以下の4大対立仮説を独立実験により検証・棄却した：
+さらに、本研究では以下の4大対立仮説を独立実験により検証・検討した：
 
-- **Generation-time Sweep**: 生成プレフィックス直後でのパッチングにより後段層（L24 MLP: 5.02%, L20 ATTN: 4.23%）で微増が観測されたものの、中央値は依然0.00%であり、95%以上の変位は非回復である。
-- **Probe-Aligned Necessity Sweep**: プローブ方向の直交射影消去による中和比率は全層で -3.27%〜+0.61% であり、直交ランダム方向に対する特異性検定（BH-FDR補正後）で有意な層は皆無（0/84）であった。
-- **Attention Pathway**: Attention出力の置換でも因果回復は生じず、迂回仮説は棄却された。
-- **Architectural Replication**: Llama-3.2-1B-Instruct（全16層）での生成時パッチングでも回復率は最大0.73%に留まり、知見の普遍性が実証された。
+- **Generation-time Sweep**: 生成プレフィックス直後でのパッチングにより後段層（L24 MLP: 5.02%, L20 ATTN: 4.23%）で微小な回復率上昇が観測されたものの、全層を通じた中央値回復率は0.00%にとどまった。
+- **Probe-Aligned Necessity Sweep**: プローブ方向の直交射影消去による中和比率は全層で -3.27%〜+0.61% であり、直交ランダム方向に対する特異性検定（BH-FDR補正後、全84条件）で有意な層は皆無（最小 $q = 0.857$）であった。
+- **Attention Pathway**: 単一層射影済みAttention出力の置換でも因果回復率は極小（Prompt最大1.48%, Generation最大4.23%）であり、強力な局所的因果ボトルネックとして機能する証拠は見出されなかった（We found no evidence that a single-layer projected attention output acts as a strong local causal bottleneck）。
+- **Architectural Replication**: Llama-3.2-1B-Instruct（全16層）での生成時パッチングでも回復率は最大0.73%（中央値0.00%）に留まり、異なるモデルファミリにおいても同様に低い生成時局所回復率が独立に観測された（Low generation-time local causal recovery was independently replicated in Llama-3.2-1B-Instruct）。
 
 したがって、
 
-$$\boxed{\text{High layerwise decodability} \not\Rightarrow \text{large local causal leverage / necessity}}$$
+$$\boxed{\text{High layerwise decodability } (R^2 \approx 0.56) \quad\text{coexists with}\quad \text{low local sufficiency } (S_\ell \le 2.2\%) \quad\text{and}\quad \text{low probe-aligned necessity } (R_{\mathrm{neut}} \approx 0\%)}$$
 
-という三位一体の解離が完全に確定された。
+すなわち、
+
+$$D_\ell \not\to S_\ell, \qquad D_\ell \not\to N_\ell$$
+
+という明確な経験的解離が確立された。
 
 重要なのは、これはaffect-related informationがモデルの出力生成に「使用されていない」ことを意味しない点である。本実験が示すのは、最終prompt-tokenにおける単一層MLP/residual activation sliceの置換という介入族では、その情報のdecodabilityからdownstream reportに対するcausal leverageを予測できないという、より限定された主張である。
 

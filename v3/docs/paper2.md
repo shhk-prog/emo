@@ -12,11 +12,11 @@ Abstract
 
 第三に、真の2D Joint Optimal Transport（Joint OT）に基づく同一モデル内Peak→Neutral活性化置換の因果回復率は、Layer 15 MLPで1.00%に留まり、全28層・全コンポーネント（MLP, Attention, Residual）を通じた最大回復率も2.20%（Layer 10 MLP）であった。層別decodabilityと因果回復率の間に検出可能な単調関係は認められなかった（MLP: Spearman (\rho=0.296, p=0.127); ATTN: (\rho=0.023, p=0.908); RESID: (\rho=-0.039, p=0.842)）。
 
-第四に、自己報告生成直前のプレフィックス最終トークンにおける生成時因果パッチング（Generation-time sweep）では、後段層（Layer 20〜24）で微小な変位上昇（MLP L24で最大5.02%、ATTN L20で最大4.23%）が認められたものの、中央値はいずれも0.00%であり、95%以上の変位は依然として非回復であった。
+第四に、自己報告生成直前のプレフィックス最終トークンにおける生成時因果パッチング（Generation-time sweep）では、後段層（Layer 20〜24）で微小な変位上昇（MLP L24で最大5.02%、ATTN L20で最大4.23%）が認められたものの、全層を通じた中央値回復率は0.00%にとどまった。
 
-第五に、プローブ方向の幾何学的射影消去による局所必要性検定（Probe-aligned necessity sweep）では、全28層×3コンポーネントにおいて出力の中和比率は一貫して0%近傍（-3.27%〜+0.61%）であり、直交ランダム方向消去に対する特異性検定（Benjamini-Hochberg FDR補正後）で有意（(q < 0.05)）となる層は皆無であった。さらに、この局所的因果解離はMeta Llama-3.2-1B-Instruct（全16層、最大回復率0.73%）においても完全に再現された。
+第五に、プローブ方向の幾何学的射影消去による局所必要性検定（Probe-aligned necessity sweep）では、全28層×3コンポーネントにおいて出力の中和比率は一貫して0%近傍（-3.27%〜+0.61%）であり、直交ランダム方向消去に対する特異性検定（Benjamini-Hochberg FDR補正後）で有意（(q < 0.05)）となる層は皆無であった。さらに、異なるモデルファミリであるMeta Llama-3.2-1B-Instruct（全16層）においても、同様に低い生成時局所回復率（最大0.73%、中央値0.00%）が独立に観測された。
 
-以上の結果から、本研究は「High Decodability, Low Local Sufficiency, Low Probe-Aligned Necessity」の三位一体を実証し、大規模言語モデルにおいて線形プローブによるアクセス可能性（decodability）を、モデル自身が下流報告を生成する因果的メカニズム（causal mechanism）と同定してはならないことを強く示す。
+以上の結果から、本研究は「High Decodability coexists with Low Local Sufficiency and Low Probe-Aligned Necessity」という解離を実証し、大規模言語モデルにおいて線形プローブによるアクセス可能性（decodability）を、モデル自身が下流報告を生成する局所的因果メカニズムと同定してはならないことを強く示す。
 
 ⸻
 
@@ -725,7 +725,7 @@ RESID	0.5016 (L14)	1.68% (L16)	-0.0394	0.8422
 主要な知見は以下の通りである。
 
 1. **Attention経路における因果回復の欠如**:
-   Attention outputにおける局所回復率も最大1.48%（Layer 20）に留まり、MLP（最大2.20%）やResidual（最大1.68%）と同様に極小であった。この結果は、「感情情報の因果的伝達がAttention機構を通じて迂回されている」という仮説を否定する。
+   Attention outputにおける局所回復率も最大1.48%（Layer 20）に留まり、MLP（最大2.20%）やResidual（最大1.68%）と同様に極小であった。したがって、We found no evidence that a single-layer projected attention output at the tested token position acts as a strong local causal bottleneck.（本実験で検証した特定トークン位置における単一層の射影済みAttention出力が、強力な局所的因果ボトルネックとして機能する証拠は見出されなかった。ただし、これは複数層にわたるAttention回路、個別のAttention Head、あるいはKVキャッシュを介した系列全体の伝播経路を否定するものではない）。
 2. **最高デコード層での回復率の極小性**:
    MLPデコーダビリティが最大となるLayer 15（(R^2 = 0.5610)）におけるJoint OT回復率はわずか1.00%（中央値0.72%）であった。同様にAttentionデコーダビリティが最大となるLayer 18（(R^2 = 0.5495)）での回復率は0.04%（中央値0.14%）であった。
 3. **Decodability–Causal Recoveryの無相関**:
@@ -877,7 +877,7 @@ G_\ell = 1 - \frac{\mathrm{OT}_{VA}(P_{\mathrm{patch}}, P_{\mathrm{peak}})}{\mat
 
 生成時パッチングでは、プロンプト時（最大 2.20%）と比較して後段層（Layer 20〜24）で回復率のわずかな上昇（最大 5.02%）が認められる。これは、下流トークン出力の直前段階において局所表現の直接的伝播が一部強まる動態を示唆する。
 
-しかし、**最大回復率であっても約 5%（中央値はいずれも 0.00%）** に過ぎず、出力分布全体の変位の 95% 以上は依然として回復されない。したがって、介入位置を生成時トークンへ移動させた場合であっても、「単一の局所層表現が自己報告出力分布を決定論的に支配している」という仮説は支持されない。
+しかし、**全28層を通じて層平均回復率は最大でも 5.02%（Layer 24 MLP）に過ぎず、層別の中央値回復率は 0.00% であった**（Even the largest layer-averaged recovery was only 5.02%, while the median recovery across layers was 0.00%）。したがって、介入位置を生成時トークンへ移動させた場合であっても、「単一の局所層表現が自己報告出力分布を決定論的に支配している」という仮説は支持されない。
 
 ⸻
 
@@ -912,7 +912,7 @@ h_{\mathrm{ablated}} = h - (h^\top \hat{v}_{\mathrm{probe}})\hat{v}_{\mathrm{pro
 4. **Matched Neutral Baseline**:
    Neutral条件の活性化ベクトルそのものからプローブ方向を消去した際のコントロール変位。
 
-全28層×3コンポーネント（計84条件）に対し、Benjamini-Hochberg FDR（False Discovery Rate）補正を適用した。さらに、代表4層（Layer 7, 15, 21, 27）についてはランダム方向サンプル数を (N=100) に拡大した高精度追試を実施した。
+全28層×3コンポーネント（計84条件）に対し、直交ランダム方向サンプル数 (N=20)（擬似カウント付き経験的p値の最小分解能 (1/21 \approx 0.0476)）を用いた網羅的スクリーニングを実施した。多重比較補正としては、直交特異性帰無分布 (R_\perp) に対する84条件の仮説族として Benjamini-Hochberg FDR 補正を適用した。また、等方帰無分布 (R_{\mathrm{iso}}) を含めた全168検定を一括補正対象（合同family）とした場合でも同様に検証した。
 
 16.3 Results
 
@@ -924,11 +924,11 @@ h_{\mathrm{ablated}} = h - (h^\top \hat{v}_{\mathrm{probe}})\hat{v}_{\mathrm{pro
    中和比率 (R_{\mathrm{neut}}) は、全層を通じて **-3.27% 〜 +0.61%** であり、プローブ方向を消去しても出力が中立分布へ向かって復元される傾向は一切観察されなかった（むしろ微小な負値、すなわち直交的な摂動による歪みを示す）。
 * **特異性検定における有意差の欠如**:
    代表層における直交帰無分布との比較結果は以下の通りである。
-   * Layer 7 (Confirmatory): MLP (Z_\perp = 0.09, p = 0.4286); ATTN (Z_\perp = 1.92, p = 0.0952); RESID (Z_\perp = 0.16, p = 0.3810)
-   * Layer 15 (Confirmatory): MLP (Z_\perp = -0.30, p = 0.6190); ATTN (Z_\perp = -0.09, p = 0.4762); RESID (Z_\perp = -0.31, p = 0.7143)
-   * Layer 21 (Confirmatory): MLP (Z_\perp = -1.21, p = 0.9048); ATTN (Z_\perp = -0.57, p = 0.7619); RESID (Z_\perp = 0.97, p = 0.2381)
-   * Layer 27 (Confirmatory): MLP (Z_\perp = 0.54, p = 0.3333); ATTN (Z_\perp = -1.84, p = 1.0000); RESID (Z_\perp = 0.27, p = 0.5714)
-   全84条件において、生p値が0.05を下回った数例（L6 MLP, L16 MLP, L19 MLP）を含め、Benjamini-Hochberg FDR補正後には**すべての層・コンポーネントで有意水準（(q < 0.05)）を満たすものは皆無（0/84）**であった。
+   * Layer 7: MLP (Z_\perp = 0.09, p = 0.4286); ATTN (Z_\perp = 1.92, p = 0.0952); RESID (Z_\perp = 0.16, p = 0.3810)
+   * Layer 15: MLP (Z_\perp = -0.30, p = 0.6190); ATTN (Z_\perp = -0.09, p = 0.4762); RESID (Z_\perp = -0.31, p = 0.7143)
+   * Layer 21: MLP (Z_\perp = -1.21, p = 0.9048); ATTN (Z_\perp = -0.57, p = 0.7619); RESID (Z_\perp = 0.97, p = 0.2381)
+   * Layer 27: MLP (Z_\perp = 0.54, p = 0.3333); ATTN (Z_\perp = -1.84, p = 1.0000); RESID (Z_\perp = 0.27, p = 0.5714)
+   全84条件において、生p値が0.05を下回った数例（L6 MLP, L16 MLP, L19 MLP; いずれも (p = 0.0476)）を含め、Benjamini-Hochberg FDR補正後には**すべての層・コンポーネントで有意水準（(q < 0.05)）を満たすものは皆無（最小 (q = 0.857)）**であった。等方帰無分布を含めた全168検定の合同補正でも最小 (q = 0.897) となり、結論は完全に一致した。
 
 16.4 Defensive Framing & Interpretation
 
@@ -954,9 +954,7 @@ Llama-3.2-1B-Instructにおける全16層×3コンポーネントの生成時因
 
 17.3 Interpretation
 
-LLaMAアーキテクチャにおいても、生成時における単一層の局所活性化置換による因果回復率は最大でも 0.73% に過ぎず、Qwenで観測された現象（局所単一層の非十分性）がモデルファミリを超えて普遍的であることが実証された。
-
-⸻
+LLaMAアーキテクチャにおいても、生成時における単一層の局所活性化置換による因果回復率は最大でも 0.73%（中央値 0.00%）に留まった。したがって、Low generation-time local causal recovery was independently replicated in Llama-3.2-1B-Instruct.（異なるモデルファミリであるMeta Llama-3.2-1B-Instructにおいても、同様に低い生成時局所因果回復率が独立に観測された）。
 
 ⸻
 
@@ -969,21 +967,29 @@ LLaMAアーキテクチャにおいても、生成時における単一層の局
 2. **Panel B: Prompt-Time Local Causal Sufficiency ((S_\ell))**:
    プロンプト最終トークンにおける同一モデル内活性化置換（Peak→Neutral）による真の2D Joint OT回復率は、全28層・全経路を通じて一貫して極小である（MLP最大 2.20%; ATTN最大 1.48%; RESID最大 1.68%）。デコーダビリティとの単調相関は認められない。
 3. **Panel C: Probe-Aligned Local Necessity ((N_\ell))**:
-   プローブ方向の幾何学的射影消去による出力分布の変位量（(N_\ell = 0.0004 \sim 0.0082)）は極めて微小であり、中和比率（(R_{\mathrm{neut}} = -3.27\% \sim +0.61\%)）は一切の中和傾向を示さない。直交ランダム方向消去との差（(Z_\perp)）は、全層×3コンポーネントのBenjamini-Hochberg FDR補正後、すべての層で非有意（(q > 0.05)）である。
+   プローブ方向の幾何学的射影消去による出力分布の変位量（(N_\ell = 0.0004 \sim 0.0082)）は極めて微小であり、中和比率（(R_{\mathrm{neut}} = -3.27\% \sim +0.61\%)）は一切の中和傾向を示さない。直交ランダム方向消去との差（(Z_\perp)）は、全層×3コンポーネントのBenjamini-Hochberg FDR補正後、すべての層で非有意（(q \ge 0.857)）である。
 4. **Panel D: Generation-Time Causal Sufficiency ((G_\ell))**:
-   自己報告生成直前のプレフィックス最終トークンにおける介入では、後段層（Layer 20〜24）で微小な変位上昇（MLP L24で最大 5.02%、ATTN L20で最大 4.23%）が認められるものの、中央値はいずれも 0.00% であり、95%以上の変位は非回復のままである。
+   自己報告生成直前のプレフィックス最終トークンにおける介入では、後段層（Layer 20〜24）で微小な変位上昇（MLP L24で最大 5.02%、ATTN L20で最大 4.23%）が認められるものの、全層を通じた中央値回復率は 0.00% にとどまった。
 
-以上より、本研究は以下の三位一体の関係を実証した：
+以上より、本研究は以下の共存関係（coexistence）を実証した：
 
 [
 \boxed{
 \text{High Decodability } (R^2 \approx 0.56)
-\quad\not\Rightarrow\quad
-\text{Low Local Sufficiency } (S_\ell < 2.2\%)
-\quad\land\quad
-\text{Low Probe-Aligned Necessity } (R_{\mathrm{neut}} \approx 0\%)
+\quad\text{coexists with}\quad
+\text{Low Local Sufficiency } (S_\ell \le 2.2\%)
+\quad\text{and}\quad
+\text{Low Probe-Aligned Local Necessity } (R_{\mathrm{neut}} \approx 0\%)
 }
 ]
+
+すなわち、
+
+[
+D_\ell \not\to S_\ell, \qquad D_\ell \not\to N_\ell
+]
+
+である。
 
 ⸻
 
@@ -1005,11 +1011,11 @@ LLaMAアーキテクチャにおいても、生成時における単一層の局
 1. **反論1: 「SufficiencyだけでなくNecessityを測定すべきではないか」**:
    → **実証的回答**: 幾何学的直交射影によるProbe direction ablationおよびSpecificity control（84条件BH-FDR補正）を実施した。結果、プローブ方向消去による中和比率は一貫して 0% 近傍（-3.27%〜+0.61%）であり、特異的有意差（(q < 0.05)）を示す層は皆無であった。プローブ方向は局所的に十分でないだけでなく、局所的に不可欠でもない。
 2. **反論2: 「Prompt時ではなくGeneration時に介入すべきではないか」**:
-   → **実証的回答**: 自己報告生成プレフィックス直後における全28層パッチング（Generation-time sweep）を実施した。後段MLP（L24）で 5.02%、Attention（L20）で 4.23% と、プロンプト時を上回る回復率の兆候が確認されたものの、依然として中央値は 0.00% であり、95%以上の変位は非回復であった。単一層の局所介入は生成時においても出力を支配しない。
+   → **実証的回答**: 自己報告生成プレフィックス直後における全28層パッチング（Generation-time sweep）を実施した。後段MLP（L24）で 5.02%、Attention（L20）で 4.23% と、プロンプト時を上回る回復率の兆候が一部確認されたものの、全層を通じた中央値回復率は 0.00% にとどまった。単一層の局所介入は生成時においても出力を支配しない。
 3. **反論3: 「因果回路がAttention経路にあるのではないか」**:
-   → **実証的回答**: MLP outputだけでなく、各層のprojected Attention-module outputおよびResidual streamの全層パッチングを実施した。Attention経路における回復率もプロンプト時最大 1.48%（L20）、生成時最大 4.23%（L20）に留まり、MLPと同様に局所的ボトルネックになっていない。
+   → **実証的回答**: MLP outputだけでなく、各層のprojected Attention-module outputおよびResidual streamの全層パッチングを実施した。当該トークン位置での単一層射影済みAttention出力の回復率もプロンプト時最大 1.48%（L20）、生成時最大 4.23%（L20; 中央値 0.00%）に留まり、We found no evidence that a single-layer projected attention output at the tested token position acts as a strong local causal bottleneck.（本実験で検証した特定トークン位置における単一層の射影済みAttention出力が、強力な局所的因果ボトルネックとして機能する証拠は見出されなかった）。
 4. **反論4: 「Qwen特有のアーキテクチャや訓練バイアスではないか」**:
-   → **実証的回答**: Llama-3.2-1B-Instruct（全16層）に対する生成時因果パッチングを独立実施した。LLaMAにおける因果回復率は全層で一貫して 1% 未満（最大 0.73% at L4 ATTN）であり、本知見がTransformer全般に共通する普遍的動態であることが確認された。
+   → **実証的回答**: Llama-3.2-1B-Instruct（全16層）に対する生成時因果パッチングを独立実施した。LLaMAにおける因果回復率は全層で一貫して 1% 未満（最大 0.73% at L4 ATTN、中央値 0.00%）であり、異なるモデルファミリにおいても同様に低い生成時局所因果回復率が観測された（Low generation-time local causal recovery was independently replicated in Llama-3.2-1B-Instruct）。
 
 19.3 Defensive Framing: What These Findings Do and Do Not Mean
 

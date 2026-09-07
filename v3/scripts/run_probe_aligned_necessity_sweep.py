@@ -204,7 +204,7 @@ def evaluate_necessity_for_layer(
         matched_neut_necessities.append(compute_joint_ot_2d(p_peak, p_matched_flat.reshape((9, 9))))
         
         # D. Random Null Directions (each is 1 batched forward pass!)
-        for k in range(min(n_samples, 20)):
+        for k in range(n_samples):
             h_iso = get_direction_ablation_hook(rand_iso_dirs[k], target_pos)
             hnd = target_mod.register_forward_hook(h_iso)
             l_r_iso, _ = compute_likelihoods_batched(model, tokenizer, peak_prompt, candidates, device=device, normalize_length=normalize_length)

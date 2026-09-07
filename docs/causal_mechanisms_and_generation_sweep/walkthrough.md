@@ -155,3 +155,22 @@ CUDA_VISIBLE_DEVICES=0 .venv/bin/python v3/scripts/run_generation_time_causal_sw
 6. **Appendix A & B の更新**:
    - 全28層の Joint OT 実測テーブルおよび再現性スクリプト・データマッピングを同期。
 
+---
+
+## 7. 査読者視点に基づく防御的フレーミングと統計的整合性の精緻化（第8版最終版）
+
+1. **Llama追試のトーンダウン**:
+   - 「完全再現」「普遍的」という過剰主張を排し、`Low generation-time local causal recovery was independently replicated in Llama-3.2-1B-Instruct.` / 「異なるモデルファミリにおいても同様に低い生成時局所回復率が独立に観測された」と厳格に限定。
+2. **Necessity p値の解像度とスクリプトバグの修正**:
+   - `run_probe_aligned_necessity_sweep.py` 内の `min(n_samples, 20)` による制限バグを特定し修正。
+   - 論文記述においては、現在の実測値が $N=20$（経験的p値の最小分解能 $1/21 \approx 0.0476$）に基づく網羅的スクリーニング結果であることを正直かつ正確に記載。
+3. **FDR Family 定義の完全整合**:
+   - 直交特異性帰無分布 $R_\perp$ に対する全28層×3コンポーネント（計84条件）に対する BH-FDR 補正（最小 $q = 0.857$、全件非有意）として正しく定義。さらに、等方帰無分布を含めた全168検定の合同 family でも最小 $q = 0.897$ であり結論が不変であることを併記。
+4. **Attention に関する結論の厳密化**:
+   - 「Attention 経路全体の迂回を否定」ではなく、`We found no evidence that a single-layer projected attention output at the tested token position acts as a strong local causal bottleneck.`（当該トークン位置での単一層射影済み出力が強力なボトルネックとして機能する証拠は見出されなかった）と正確に限定。
+5. **歪んだ回復率分布に対する実測値準拠の客観的記述**:
+   - 「95%以上の変位は非回復」を改め、`Even the largest layer-averaged recovery was only 5.02%, while the median recovery was 0.00%.`（層平均回復率は最大 5.02% に過ぎず、中央値回復率は 0.00% であった）と実測値そのものを客観記述。
+6. **三位一体フレームワークの論理記号修正**:
+   - 誤った論理式を改め、`High Decodability (R² ≈ 0.56) coexists with Low Local Sufficiency (S_ℓ ≤ 2.2%) and Low Probe-Aligned Local Necessity (R_neut ≈ 0%)`（$D_\ell \not\to S_\ell, \quad D_\ell \not\to N_\ell$）と共存関係として定式化。
+
+
