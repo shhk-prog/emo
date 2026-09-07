@@ -22,11 +22,20 @@ def generate_81_candidates(template_type="standard"):
             va_pairs.append((v, a))
     return candidates, va_pairs
 
-def compute_likelihoods_for_candidates(model, tokenizer, prompt, candidates, device="cuda"):
+def compute_likelihoods_for_candidates(model, tokenizer, prompt, candidates, device="cuda", normalize_length=False):
     """
     Given a prompt (e.g. chat history up to the point of assistant response),
-    computes the log likelihood of each candidate string.
-    Note: In causal LM, log P(candidate | prompt) = sum_{t} log P(token_t | prompt + candidate_{<t})
+    computes the log likelihood (or length-normalized log likelihood) of each candidate string.
+    
+    Note:
+      - Raw sequence log-likelihood: sum_{t} log P(token_t | prompt + candidate_{<t})
+      - Length-normalized log-likelihood: (1 / |candidate|) * sum_{t} log P(token_t | prompt + candidate_{<t})
+      
+    Returns:
+      likelihoods: List[float] (the computed log-likelihood score for each candidate)
+      candidate_lengths: List[int] (the number of tokens in each candidate string)
+      *IMPORTANT*: candidate_lengths is NOT a probability distribution.
+      To obtain normalized probabilities over candidates, pass likelihoods to `compute_expected_va(...)`.
     """
     prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
     
@@ -52,9 +61,15 @@ def compute_likelihoods_for_candidates(model, tokenizer, prompt, candidates, dev
             log_probs = torch.nn.functional.log_softmax(logit_step, dim=-1)
             cand_log_probs.append(log_probs[token_id].item())
             
-        likelihood = sum(cand_log_probs)
+        raw_ll = sum(cand_log_probs)
+        cand_len = len(cand_ids)
+        if normalize_length and cand_len > 0:
+            likelihood = raw_ll / cand_len
+        else:
+            likelihood = raw_ll
+            
         likelihoods.append(likelihood)
-        candidate_lengths.append(len(cand_ids))
+        candidate_lengths.append(cand_len)
         
     return likelihoods, candidate_lengths
 

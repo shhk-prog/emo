@@ -8,7 +8,7 @@ for Qwen2.5-1.5B-Instruct to directly test the core dissociation:
   rho(Decodability, Causal_Influence) ~= 0
 
 For each layer l:
-1. Decodability (D_l): Held-out linear probe R^2 for Valence
+1. Decodability (D_l): Held-out linear probe R^2 for Peak-vs-Neutral intensity indicator (peak=1, neutral=0)
 2. Causal Influence (C_l): Within-model substitution recovery (Peak -> Neutral)
    for (a) MLP output (last token), (b) Residual stream (last token)
 """
@@ -87,7 +87,7 @@ def fit_and_eval_probe(train_acts, train_labels, test_acts, test_labels, alpha=1
     r2 = 1.0 - (ss_res / ss_tot) if ss_tot > 1e-6 else 0.0
     return float(r2)
 
-def evaluate_layer_causal_effect(model, tokenizer, valid_pairs, layer, comp, candidates, va_pairs, device="cuda"):
+def evaluate_layer_causal_effect(model, tokenizer, valid_pairs, layer, comp, candidates, va_pairs, device="cuda", normalize_length=False):
     recoveries = []
     shifts = []
     
@@ -96,12 +96,12 @@ def evaluate_layer_causal_effect(model, tokenizer, valid_pairs, layer, comp, can
         neutral_prompt = format_prompt(neutral_row['text'])
         
         # Source (Peak)
-        l_peak, p_peak = compute_likelihoods_for_candidates(model, tokenizer, peak_prompt, candidates)
-        ev_peak, _, _, _, _ = compute_expected_va(l_peak, va_pairs)
+        l_peak, _ = compute_likelihoods_for_candidates(model, tokenizer, peak_prompt, candidates, device=device, normalize_length=normalize_length)
+        ev_peak, _, _, _, p_peak = compute_expected_va(l_peak, va_pairs)
         
         # Target (Neutral)
-        l_neut, p_neut = compute_likelihoods_for_candidates(model, tokenizer, neutral_prompt, candidates)
-        ev_neut, _, _, _, _ = compute_expected_va(l_neut, va_pairs)
+        l_neut, _ = compute_likelihoods_for_candidates(model, tokenizer, neutral_prompt, candidates, device=device, normalize_length=normalize_length)
+        ev_neut, _, _, _, p_neut = compute_expected_va(l_neut, va_pairs)
         
         # Extract Peak activation
         extracted_act = {}
@@ -125,11 +125,11 @@ def evaluate_layer_causal_effect(model, tokenizer, valid_pairs, layer, comp, can
             get_last_token_patch_hook(extracted_act["val"], neutral_last_pos)
         )
         
-        l_patch, p_patch = compute_likelihoods_for_candidates(model, tokenizer, neutral_prompt, candidates)
-        ev_patch, _, _, _, _ = compute_expected_va(l_patch, va_pairs)
+        l_patch, _ = compute_likelihoods_for_candidates(model, tokenizer, neutral_prompt, candidates, device=device, normalize_length=normalize_length)
+        ev_patch, _, _, _, p_patch = compute_expected_va(l_patch, va_pairs)
         patch_handle.remove()
         
-        # EMD Recovery
+        # EMD Recovery using normalized probability distributions over 9x9 VA grid
         p_source_mat = np.array(p_peak).reshape(9, 9)
         p_target_mat = np.array(p_neut).reshape(9, 9)
         p_patch_mat = np.array(p_patch).reshape(9, 9)
@@ -151,6 +151,7 @@ def main():
     parser.add_argument("--model_name", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
     parser.add_argument("--data_path", type=str, default="v3/data/aipsy_strict_expanded.csv")
     parser.add_argument("--output_path", type=str, default="v3/results/causal_localization_sweep_results.csv")
+    parser.add_argument("--normalize_length", action="store_true", help="Use length-normalized candidate log-likelihood")
     args = parser.parse_args()
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -201,11 +202,11 @@ def main():
         r2_res = fit_and_eval_probe(train_res, train_labels, test_res, test_labels)
         
         # 2. Causal Substitution on MLP and Resid
-        emd_rec_mlp, shift_mlp = evaluate_layer_causal_effect(model, tokenizer, valid_pairs, l, "mlp", candidates, va_pairs, device=device)
-        emd_rec_res, shift_res = evaluate_layer_causal_effect(model, tokenizer, valid_pairs, l, "resid", candidates, va_pairs, device=device)
+        emd_rec_mlp, shift_mlp = evaluate_layer_causal_effect(model, tokenizer, valid_pairs, l, "mlp", candidates, va_pairs, device=device, normalize_length=args.normalize_length)
+        emd_rec_res, shift_res = evaluate_layer_causal_effect(model, tokenizer, valid_pairs, l, "resid", candidates, va_pairs, device=device, normalize_length=args.normalize_length)
         
-        print(f"Layer {l} | MLP: Probe R^2={r2_mlp:.3f}, Rec={emd_rec_mlp:.2f}%, Shift={shift_mlp:.2f}%")
-        print(f"Layer {l} | Resid: Probe R^2={r2_res:.3f}, Rec={emd_rec_res:.2f}%, Shift={shift_res:.2f}%")
+        print(f"Layer {l} | MLP: Probe(Peak-vs-Neut) R^2={r2_mlp:.3f}, Rec={emd_rec_mlp:.2f}%, Shift={shift_mlp:.2f}%")
+        print(f"Layer {l} | Resid: Probe(Peak-vs-Neut) R^2={r2_res:.3f}, Rec={emd_rec_res:.2f}%, Shift={shift_res:.2f}%")
         
         sweep_results.append({
             "layer": l,

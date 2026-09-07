@@ -72,7 +72,7 @@ def get_all_tokens_patch_hook(source_tensor):
             return output
     return hook
 
-def run_within_model_experiment(model, tokenizer, test_df, candidates, va_pairs, device="cuda"):
+def run_within_model_experiment(model, tokenizer, test_df, candidates, va_pairs, device="cuda", normalize_length=False):
     """
     Evaluates Peak -> Neutral within-model patching across pair_id groups.
     """
@@ -108,12 +108,12 @@ def run_within_model_experiment(model, tokenizer, test_df, candidates, va_pairs,
             neutral_prompt = format_prompt(neutral_row['text'])
             
             # 1. Source (Peak) report distribution
-            l_peak, p_peak = compute_likelihoods_for_candidates(model, tokenizer, peak_prompt, candidates)
-            ev_peak, _, _, _, _ = compute_expected_va(l_peak, va_pairs)
+            l_peak, _ = compute_likelihoods_for_candidates(model, tokenizer, peak_prompt, candidates, device=device, normalize_length=normalize_length)
+            ev_peak, _, _, _, p_peak = compute_expected_va(l_peak, va_pairs)
             
             # 2. Target (Neutral) report distribution
-            l_neut, p_neut = compute_likelihoods_for_candidates(model, tokenizer, neutral_prompt, candidates)
-            ev_neut, _, _, _, _ = compute_expected_va(l_neut, va_pairs)
+            l_neut, _ = compute_likelihoods_for_candidates(model, tokenizer, neutral_prompt, candidates, device=device, normalize_length=normalize_length)
+            ev_neut, _, _, _, p_neut = compute_expected_va(l_neut, va_pairs)
             
             # Extract activations from Peak run
             extracted_acts = {}
@@ -160,14 +160,14 @@ def run_within_model_experiment(model, tokenizer, test_df, candidates, va_pairs,
                     ))
                     
             # Compute report distribution under patch
-            l_patch, p_patch = compute_likelihoods_for_candidates(model, tokenizer, neutral_prompt, candidates)
-            ev_patch, _, _, _, _ = compute_expected_va(l_patch, va_pairs)
+            l_patch, _ = compute_likelihoods_for_candidates(model, tokenizer, neutral_prompt, candidates, device=device, normalize_length=normalize_length)
+            ev_patch, _, _, _, p_patch = compute_expected_va(l_patch, va_pairs)
             
             for h in patch_handles:
                 h.remove()
                 
             # Compute recovery
-            # 2D EMD
+            # 2D EMD using normalized probability distributions
             p_source_mat = np.array(p_peak).reshape(9, 9)
             p_target_mat = np.array(p_neut).reshape(9, 9)
             p_patch_mat = np.array(p_patch).reshape(9, 9)
@@ -205,6 +205,7 @@ def main():
     parser.add_argument("--model_name", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
     parser.add_argument("--data_path", type=str, default="v3/data/aipsy_strict_expanded.csv")
     parser.add_argument("--output_path", type=str, default="v3/results/within_model_positive_control_results.csv")
+    parser.add_argument("--normalize_length", action="store_true", help="Use length-normalized candidate log-likelihood")
     args = parser.parse_args()
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -224,7 +225,7 @@ def main():
     
     candidates, va_pairs = generate_81_candidates()
     
-    res_df = run_within_model_experiment(model, tokenizer, test_df, candidates, va_pairs, device=device)
+    res_df = run_within_model_experiment(model, tokenizer, test_df, candidates, va_pairs, device=device, normalize_length=args.normalize_length)
     os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
     res_df.to_csv(args.output_path, index=False)
     print(f"Results saved to {args.output_path}")
