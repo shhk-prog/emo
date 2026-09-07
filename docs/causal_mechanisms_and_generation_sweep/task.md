@@ -1,0 +1,39 @@
+# タスク: 因果メカニズム検証実験の拡張実装（改訂第7版: 最終決定完全版）
+
+- [x] 1. 実装計画書（implementation_plan.md）の承認 <!-- id: 0 -->
+- [x] 2. 厳密 2D Joint OT ソルバーの実装 (`v3/src/ot_utils.py`) <!-- id: 1 -->
+    - [x] 81×81 マンハッタン距離コスト行列の構築とキャッシュ
+    - [x] `compute_joint_ot_2d` (POT `ot.emd2` に一本化)
+    - [x] `compute_marginal_wasserstein_sum` & `compute_1d_wasserstein` (副指標用)
+- [x] 3. 共通抽象化モジュールの実装 (`v3/src/model_utils.py`) <!-- id: 2 -->
+    - [x] Qwen / Llama 共通レイヤー・コンポーネント取得（MLP, Attn, Resid）
+    - [x] 堅牢な Hook 関数（tuple/tensor 対応、hidden のみ置換）
+    - [x] Direction ablation hook ($h \leftarrow h - (h^\top \hat{v})\hat{v}$)
+    - [x] Token-level prefix アライメント関数（`assert input_ids[...].tolist() == prefix_ids`）
+- [x] 4. 拡張因果実験スクリプトの実装 <!-- id: 3 -->
+    - [x] (A) `run_generation_time_causal_sweep.py` 【最優先1】(Joint OT 回復率、$\epsilon_{\mathrm{rec}}$ セーフガード、`use_cache=False`) <!-- id: 4 -->
+    - [x] (B) `run_probe_aligned_necessity_sweep.py` 【最優先2】(4大操作分離、168検定BH-FDR、代表4層24検定高精度追試) <!-- id: 5 -->
+    - [x] (C) `run_causal_localization_sweep.py` の Attention 統合 【最優先3】(射影済み Attn 出力置換、Joint OT 算出、`use_cache=False`) <!-- id: 6 -->
+    - [x] (D) Replication A (Llama-3.2-1B-Instruct 単体) の動作確認準備 <!-- id: 7 -->
+- [x] 5. 厳格な単体テストの実装と検証 (`v3/tests/test_causal_extensions.py`) <!-- id: 8 -->
+    - [x] OT 不変量テスト（同一ゼロ、対称性）
+    - [x] **Marginal 一致・Joint 相違反例テスト** ($W_1^V + W_1^A < 10^{-6}$, $|\mathrm{OT}_{VA} - 8.0| < 10^{-5}$)
+    - [x] 人工分布での Joint OT Recovery (0.0 / 1.0) 許容誤差アサーション & $\epsilon_{\mathrm{rec}}$ ガード除外動作確認
+    - [x] Direction removal の直交性・ノルム保存 ($(h')^\top \hat{v} < 10^{-6}$, $\|h - h'\| = |h^\top \hat{v}|$)
+    - [x] 直交化ランダム方向テスト ($\hat{v}_{\perp}^\top \hat{v}_{\mathrm{probe}} < 10^{-6}$)
+    - [x] Identity hook 出力不変性テスト
+    - [x] Token-level prefix 一致アサーション
+- [x] 6. 実行コマンドと実験プロトコルの整理・提示 <!-- id: 9 -->
+- [x] 7. 成果物のまとめ（walkthrough.md） <!-- id: 10 -->
+- [x] 8. 4大因果検証実験の全走破と実測データの集計・学術分析 <!-- id: 11 -->
+    - [x] 実験 1: Generation-time sweep (Qwen2.5-1.5B, 全28層 × 3comp, 最大5.02%, 中央値0.00%)
+    - [x] 実験 2: Probe-aligned necessity sweep (Qwen2.5-1.5B, 全28層 × 3comp, 中和率0%近傍, BH-FDR有意層0/84)
+    - [x] 実験 3: Attention統合 Prompt-time Joint OT sweep (Qwen2.5-1.5B, 全28層 × 3comp, 最大2.20%)
+    - [x] 実験 4: 単体テスト全6件 PASS
+    - [x] 実験 5: Replication A (Llama-3.2-1B-Instruct, 全16層 × 3comp, 最大0.73%)
+- [x] 9. 論文原稿（`v3/docs/paper2.md` / `v3/docs/paper.md`）への完全統合・反映 <!-- id: 12 -->
+    - [x] 4パネル統合メカニズムフレームワーク（$D_\ell, S_\ell, N_\ell, G_\ell$）の導入
+    - [x] 査読者の4大反論（Necessity、Generation-time、Attention、Cross-family）に対する実証的完全論駁
+    - [x] 抑制的フレーミング（Defensive Framing）の徹底と過剰主張の排除
+    - [x] 再現性マッピング（スクリプト・保存先CSV）の完全同期
+

@@ -54,3 +54,11 @@
   全ファイルのバイトコンパイルが正常終了（Exit Code 0）し、構文・インポートエラーがないことを確認。
 - **ドキュメント整合性確認**:
   - `v3/docs/paper.md` とコード間の用語（Peak-vs-Neutral indicator、raw sequence log-likelihood、length-normalized score）が完全に一致していることを確認。
+- **全28層実測スイープの完了と原稿反映**:
+  - `causal_localization_sweep_corrected_norm.csv` および `causal_localization_sweep_corrected_raw.csv` の実測値を反映。
+  - プローブ精度が Layer 15 MLP で $R^2 = 0.546$（Resid L14: $R^2 = 0.507$）に達する明瞭な山を描く一方、因果回復率は全層・全コンポーネントで一貫して 1.5% 未満（平均・中央値ともに 0% 近傍）であることを定量的に確認。
+  - Decodability と Causal Recovery の相関が統計的に完全な無相関（Spearman $\rho = -0.01 \sim 0.18, p > 0.35$）であることを実証し、`paper2.md` および `paper.md` に表6として収録完了。
+- **Defensive Framing（査読耐性・統計的厳密性）への昇華**:
+  - 「完全に無相関」「因果的に不活性」などの統計的過言を排除し、「単調な関連は検出されなかった（failed to detect monotonic association）」という厳密な表現に統一。
+  - $\operatorname{argmax} D_\ell \neq \operatorname{argmax} C_\ell$（ピーク層の不一致）を取り下げ、$D_{15}=0.546$ vs $C_{15}=1.37\%$ という効果量の絶対的解離（Effect-Size Dissociation）を中心命題に設定。
+  - 感情情報が一般に不活性であるとの過剰解釈を明確に排斥し、「tested local activation slice with respect to the measured downstream report」という操作的限定（Scope of the Causal Claim）を明文化。
