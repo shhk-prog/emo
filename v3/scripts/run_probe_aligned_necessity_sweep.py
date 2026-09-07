@@ -121,7 +121,7 @@ def compute_empirical_pvalue_and_zscore(delta_probe, delta_rands, eps_sigma=1e-6
 
 def evaluate_necessity_for_layer(
     model, tokenizer, valid_pairs, train_df, layer, comp, candidates, va_pairs,
-    base_cache=None, n_rand_all=20, n_rand_conf=100, is_confirmatory_layer=False,
+    base_cache=None, n_rand=20,
     device="cuda", normalize_length=True, eps=0.05
 ):
     target_mod = get_component_module(model, layer, comp)
@@ -136,8 +136,8 @@ def evaluate_necessity_for_layer(
     train_neut_acts = train_acts[train_labels == 0.0]
     neutral_mean_vec = np.mean(train_neut_acts, axis=0) if len(train_neut_acts) > 0 else np.zeros(train_acts.shape[1])
     
-    # Determine sample count for random nulls
-    n_samples = n_rand_conf if is_confirmatory_layer else n_rand_all
+    # Sample random directions for null specificity distributions
+    n_samples = n_rand
     rand_iso_dirs = sample_random_directions(v_probe, n_samples=n_samples, mode="isotropic", seed=100 + layer)
     rand_perp_dirs = sample_random_directions(v_probe, n_samples=n_samples, mode="orthogonal", seed=200 + layer)
     
@@ -275,8 +275,7 @@ def main():
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--normalize_length", action="store_true", default=True)
     parser.add_argument("--max_pairs", type=int, default=15)
-    parser.add_argument("--n_rand_all", type=int, default=20, help="Random null directions per exploratory layer")
-    parser.add_argument("--n_rand_conf", type=int, default=100, help="Random null directions for pre-declared representative layers")
+    parser.add_argument("--n_rand", type=int, default=20, help="Random null directions per layer (default: 20)")
     args = parser.parse_args()
     
     print(f"Loading {args.model_name} on {args.device}...")
@@ -329,20 +328,14 @@ def main():
         }
     print("Baseline caching completed! Starting layer sweep...")
     
-    # Pre-declared representative layers
-    CONFIRMATORY_LAYERS = {7, 15, 21, 27}
-    
     records = []
     
     for l in range(num_layers):
-        is_conf = l in CONFIRMATORY_LAYERS
-        conf_tag = " [CONFIRMATORY LAYER]" if is_conf else ""
-        print(f"\n>>> Running Necessity Sweep for Layer {l}/{num_layers - 1}{conf_tag} <<<")
+        print(f"\n>>> Running Necessity Sweep for Layer {l}/{num_layers - 1} <<<")
         for comp in ["mlp", "attn", "resid"]:
             res = evaluate_necessity_for_layer(
                 model, tokenizer, eval_pairs, train_df, l, comp, candidates, va_pairs,
-                base_cache=base_cache,
-                n_rand_all=args.n_rand_all, n_rand_conf=args.n_rand_conf, is_confirmatory_layer=is_conf,
+                base_cache=base_cache, n_rand=args.n_rand,
                 device=args.device, normalize_length=args.normalize_length
             )
             print(f"Layer {l} | {comp.upper()}: Probe Nec={res['mean_probe_necessity']:.4f}, Neut Ratio={res['mean_neutralization_ratio']:.2f}%, Z_perp={res['z_score_perp']:.2f} (p={res['p_value_perp']:.4f}), Matched Sub={res['mean_matched_substitution']:.4f}")
@@ -350,7 +343,6 @@ def main():
             rec = {
                 "layer": l,
                 "component": comp,
-                "is_confirmatory": is_conf,
                 **res,
                 "model_name": args.model_name
             }
@@ -360,7 +352,8 @@ def main():
         pd.DataFrame(records).to_csv(args.output_path, index=False)
         
     df_results = pd.DataFrame(records)
-    # Apply BH-FDR across all 168 tests (Family 1)
+        
+    # Apply BH-FDR across separate 84-test families
     q_iso, sig_iso = apply_benjamini_hochberg(df_results['p_value_iso'].values)
     q_perp, sig_perp = apply_benjamini_hochberg(df_results['p_value_perp'].values)
     df_results['fdr_q_iso'] = q_iso
@@ -368,6 +361,15 @@ def main():
     df_results['fdr_q_perp'] = q_perp
     df_results['fdr_sig_perp'] = sig_perp
     
+    # Also apply joint 168-test BH-FDR
+    all_p = np.concatenate([df_results['p_value_iso'].values, df_results['p_value_perp'].values])
+    q_joint, sig_joint = apply_benjamini_hochberg(all_p)
+    n = len(df_results)
+    df_results['fdr_q_joint_168_iso'] = q_joint[:n]
+    df_results['fdr_q_joint_168_perp'] = q_joint[n:]
+    df_results['fdr_sig_joint_168'] = sig_joint[:n] | sig_joint[n:]
+    
+    os.makedirs(os.path.dirname(os.path.abspath(args.output_path)), exist_ok=True)
     df_results.to_csv(args.output_path, index=False)
     print(f"\nNecessity sweep complete with BH-FDR correction! Saved to {args.output_path}")
 

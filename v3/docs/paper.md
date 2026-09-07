@@ -1,4 +1,4 @@
-# Decodability Without Causal Sufficiency: A Case Study of Affect-Relevant Representations in a Paired Base/Instruct Language Model
+# Decodability Without Local Causal Leverage: An Affect-Based Case Study in Language Models
 
 ## Abstract
 

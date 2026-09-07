@@ -1,4 +1,4 @@
-Decodability Without Causal Sufficiency: A Case Study of Affect-Relevant Representations in a Paired Base/Instruct Language Model
+Decodability Without Local Causal Leverage: An Affect-Based Case Study in Language Models
 
 Abstract
 
@@ -875,9 +875,9 @@ G_\ell = 1 - \frac{\mathrm{OT}_{VA}(P_{\mathrm{patch}}, P_{\mathrm{peak}})}{\mat
 
 15.4 Defensive Framing & Interpretation
 
-生成時パッチングでは、プロンプト時（最大 2.20%）と比較して後段層（Layer 20〜24）で回復率のわずかな上昇（最大 5.02%）が認められる。これは、下流トークン出力の直前段階において局所表現の直接的伝播が一部強まる動態を示唆する。
+生成時パッチングでは、後段層の一部でprompt-timeより大きな平均回復率（最大 5.02% at Layer 24 MLP）が観測されたが、効果は全体として小さく、層ごとのpairwise中央値は一貫して 0.00% であった（Even the largest layer-averaged recovery was only 5.02%, while the median recovery across layers was 0.00%）。このパターンが再現可能なlate-layer concentrationを表すかは追加検証を要する。
 
-しかし、**全28層を通じて層平均回復率は最大でも 5.02%（Layer 24 MLP）に過ぎず、層別の中央値回復率は 0.00% であった**（Even the largest layer-averaged recovery was only 5.02%, while the median recovery across layers was 0.00%）。したがって、介入位置を生成時トークンへ移動させた場合であっても、「単一の局所層表現が自己報告出力分布を決定論的に支配している」という仮説は支持されない。
+したがって、介入位置を生成時トークンへ移動させた場合であっても、「単一の局所層表現が自己報告出力分布を決定論的に支配している」という仮説は支持されない。
 
 ⸻
 
@@ -986,10 +986,10 @@ LLaMAアーキテクチャにおいても、生成時における単一層の局
 すなわち、
 
 [
-D_\ell \not\to S_\ell, \qquad D_\ell \not\to N_\ell
+\rho(D_\ell, S_\ell) \approx 0
 ]
 
-である。
+であり、Layerwise decodability did not reliably predict local causal recovery.
 
 ⸻
 
