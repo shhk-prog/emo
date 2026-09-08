@@ -145,3 +145,9 @@
     - [x] (H) **Section 19.1 概念整理ボックスの適正化**: $\boxed{\text{Accessibility},\; \text{Local Causal Recovery},\; \text{Direction-Specific Necessity} \text{ are distinct empirical axes}}$ へ修正。
     - [x] (I) **Llama 動機の更新**: 「Qwenで観察されたlate-generation causal localization profileがモデルファミリを越えて再現するか」へ修正。
     - [x] (J) **論文全体の中心メッセージ集約**: $\underbrace{D_{\mathrm{L15,MLP}}=.561}_{\text{high accessibility}}, \underbrace{G_{\mathrm{L15,MLP}}=1.39\%}_{\text{low local leverage}}$ vs $\underbrace{D_{\mathrm{L24,RESID}}=.147}_{\text{lower accessibility}}, \underbrace{G_{\mathrm{L24,RESID}}=53.48\%}_{\text{high local leverage}}$ の対比構造を完遂。
+- [x] 25. 投稿前最終仕上げ（トーン適正化・CI完全再現スクリプト完成・Peak-site contrast慎重化） <!-- id: 28 -->
+    - [x] (A) **Section 15.6 のトーン抑制**: 「加算性の棄却」「冗長伝播を証明」「支配的因果チャネルを捕捉」などの強すぎる表現を、*“consistent with substantial redundancy or saturation across late residual sites, rather than additive independent contributions”*（冗長または飽和的な因果寄与と整合する）へ修正。同一情報の再伝播・下流飽和シーリング・介入状態間依存を確定的に分離できない境界づけを明記。
+    - [x] (B) **Section 15.5 の表現緩和**: 「機構に内在する堅固な構造であることを証明している」を「少数の外れ値や15-pair subset特有の標本変動だけでは説明しにくいことを示している」へ是正。
+    - [x] (C) **`compute_bootstrap_ci.py` の真の再計算実装**: 単なる表示スクリプトから、ペア単位生データ（`focused_causal_sweep_39pairs_pair_level.csv`）から直接 2,000 回のブートストラップを再サンプリングし、各条件の 95% CI および Paired Peak-Site Contrast $\Delta G = +54.51\% \quad [46.97\%, 61.75\%]$（中央値差 $+60.72\%$）をミリ秒で完全再現する正規スクリプトへ改修。
+    - [x] (D) **Peak-site contrast 表現の慎重化**: Stage 2 が代表6層であることを踏まえ、全空間の $\arg\max G$ の断定を避け、「評価した全数代表部位において最大回復を示した部位（the strongest recovery among the evaluated full-cohort representative sites, L24 Residual: $D=0.147, G=53.48\%$）」と全層プローブ最高部位（L15 MLP: $D=0.561, G=1.39\%$）との直接的な効果量対比（$\Delta G = +52.09\% \quad [44.4\%, 59.7\%]$）を主証拠として記述。
+

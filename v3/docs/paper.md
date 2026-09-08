@@ -160,7 +160,7 @@ Instructモデルにおいて、greedy decodingは98.6%のサンプルで中立�
 
 - **Stage 1: Exploratory Generation-time Screen (15-pair Sweep)**: 初期の15-pair全層探索スクリーニング（`v3/results/generation_time_causal_sweep.csv`）において、中盤層（Layer 15 MLP: -1.99%）における局所因果回復の欠如と、**Layer 18〜27の後段Residual streamにおける急激な因果回復（40.01%〜50.26%、中央値 46.34%〜56.05%）**という時空間的局所化プロファイルが同定された。この結果は、プロンプト時には隠蔽されていた因果レバレッジが自己報告生成直前に後段Residual streamへ動的に移行することを示唆した。
 - **Stage 2: Focused Full-Cohort Evaluation on Representative Layers**: 初期スクリーニングで得られた候補層に加え、probe peakおよびcomponent-specific representative layersを含む代表6層（L10, 14, 15, 18, 20, 24）について、Held-out test全39組の完全一致ペアを評価対象とした（`v3/results/focused_causal_sweep_39pairs.csv`）。分母セーフガード適用後、Prompt時32ペア、Generation時39ペアが有効であった。なお、代表層にはプローブ定義層に加え探索スクリーニングからの優先層も含まれるため、本全数評価は選択独立な確認的仮説検定ではなく、探索的に同定された効果の安定性と効果量を全コホート上で再評価することを目的とする。結果、プローブ最高層 Layer 15 MLP（$R^2=0.5610$）の回復率はPrompt時 **0.06%**（中央値 0.07%）、Generation時でも **1.39%**（中央値 0.50%, 95% CI: [-0.5%, +3.3%]）に留まった。一方、生成時においては後段層の **Residual Stream（L18: 41.48% [35.2%, 47.7%], L20: 50.22% [42.6%, 57.8%], L24: 53.48% [46.0%, 60.9%]）および後段MLP（L24: 15.23% [11.0%, 19.4%]）** に実質的な因果回復が出現し、Stage 1で観測された後段Residualへの強い局所化が完全再現された（*tested local causal recovery profile shifted toward late Residual/MLP sites during report generation*）。極めて重要な点として、*Importantly, the large late-residual effects were not driven by a small number of outlying pairs. At L20 and L24, median recovery was 57.93% and 59.44%, respectively, with positive recovery in 97.4% and 94.9% of valid matched pairs.*（L20およびL24の中央値回復率は 57.93% および 59.44% であり、有効ペアの 97.4% および 94.9% で正の回復が確認されたため、少数の外れ値による歪みではない）。
-- **Multi-Layer Simultaneous Residual Stream Patching**: 単一層のL24 Residual（55.08%）に対し、2層（L20+24: 55.67%）、3層（L18+20+24: 55.74%）、7層連続（L18〜24: 55.35%）と多層同時パッチングを行っても、回復率は約55%（中央値約62%）で完全に飽和した。これは後段Residual Streamが加算的（additive）ではなく、同一の情動情報を共通チャネルで重複して前方に伝送している（redundant transmission）ことを実証している。
+- **Multi-Layer Simultaneous Residual Stream Patching**: 単一層のL24 Residual（55.08%）に対し、2層（L20+24: 55.67%）、3層（L18+20+24: 55.74%）、7層連続（L18〜24: 55.35%）と多層同時パッチングを行っても、回復率は約55%（中央値約62%）で完全に飽和した。この結果は、後段Residual Streamの各層が互いに独立した加算的寄与を累積しているというよりは、後段部位間における実質的な冗長性や下流計算での飽和、あるいは介入状態間の依存性と整合する（*consistent with substantial redundancy or saturation across late residual sites, rather than additive independent contributions*）。
 - **Probe-Aligned Necessity Sweep & N=100 Focused Test**: プローブ方向の直交射影消去による中和比率は全層で -3.27%〜+0.61% であり、系統的な中和傾向は認められなかった。重要代表5層における **N=100 ランダム直交方向高解像度追試**（`v3/results/focused_necessity_sweep_n100.csv`）でも、多重比較補正以前の段階ですべての条件で未補正の経験的 $p \ge 0.297$（$Z_\perp \le 0.51$）であり、BH-FDR補正後も全15条件で $q = 1.000$（有意層 0/15）となった。すなわち、プローブ方向の消去は系統的な中和をもたらさず、直交ランダム方向を上回る出力変位も示さなかった。
 - **Attention Pathway**: 単一層射影済みAttention出力の置換でも因果回復率は極小（Prompt最大1.48%, Generation最大4.23%）であり、tested single-layer projected Attention outputs did not show strong local causal recovery（本実験で検証した単一層の射影済みAttention出力が、強力な局所的因果ボトルネックとして機能する証拠は見出されなかった）。
 - **Cross-Family Partial Replication**: Llama-3.2-1B-Instruct（11 valid pairs）での初期部分追試では生成時回復率は最大0.73%（pairwise中央値0.00%）に留まり、Qwenで観測された後段Residualへの強い局所回復は再現されなかった。これは後段Residualへの因果レバレッジ局在化がモデルファミリや訓練方策に依存する可能性を示唆している。
@@ -177,7 +177,7 @@ $$\boxed{\text{where information is decodable} \neq \text{where/when it becomes 
 $$
 \Delta G = G_{\mathrm{L24,RESID}} - G_{\mathrm{L15,MLP}} = +52.09\% \quad (95\%\text{ bootstrap CI: } [+44.4\%, +59.7\%])
 $$
-すなわち、全層でのSpearman相関（$\rho \approx 0$）は補助的証拠であり、この**Peak-site contrast（$\arg\max_{\ell,c} D_{\ell,c} \neq \arg\max_{\ell,c,t} G_{\ell,c,t}$）こそが本研究の中心命題を支える主たる実証的証拠（primary evidence）**である。最大解読能を示す中間層（L15 MLP）はPrompt時・Generation時を問わず局所因果レバレッジをほとんど持たない一方、強い因果レバレッジは自己報告生成直前の後段Residual Stream（L18〜L24）に時間的・空間的に解離して出現することが実証された。
+すなわち、全28層の探索的Spearman相関（$\rho \approx 0$）は補助的証拠であり、全数コホートで評価した代表部位間における直接的な効果量対比——すなわち、**全層プローブ最高部位（Layer 15 MLP: $D=0.561, G=1.39\%$）と、評価した全数代表部位において最大回復を示した部位（the strongest recovery among the evaluated full-cohort representative sites, Layer 24 Residual: $D=0.147, G=53.48\%$）との間の劇的な双方向解離**——こそが本研究の中心命題を支える主たる実証的証拠（primary evidence）である。最大解読能を示す中間層（L15 MLP）はPrompt時・Generation時を問わず局所因果レバレッジをほとんど持たない一方、強い因果レバレッジは自己報告生成直前の後段Residual Stream（L18〜L24）に時間的・空間的に解離して出現することが実証された。
 
 この知見は、古典的な representation $\neq$ use を以下の3層＋時間軸へ精緻化することを要請する：
 
@@ -328,7 +328,7 @@ $$\boxed{\text{where information is decodable} \neq \text{where/when it becomes 
 - **代表6層コホート因果スイープ**: `v3/scripts/run_focused_39pairs_sweep.py` $\rightarrow$ `v3/results/focused_causal_sweep_39pairs.csv`
 - **高解像度必要性検定 (N=100)**: `v3/scripts/run_focused_necessity_n100.py` $\rightarrow$ `v3/results/focused_necessity_sweep_n100.csv`
 - **生成時多層Residualパッチング**: `v3/scripts/run_generation_multilayer_residual.py` $\rightarrow$ `v3/results/generation_multilayer_residual_results.csv`
-- **ブートストラップ95%信頼区間計算**: `v3/scripts/compute_bootstrap_ci.py` ($N_{\mathrm{boot}}=2000$, seed=42)
+- **ブートストラップ95%信頼区間計算**: `v3/scripts/compute_bootstrap_ci.py` ($N_{\mathrm{boot}}=2000$, seed=42; 入力: `focused_causal_sweep_39pairs_pair_level.csv`, `generation_multilayer_residual_results.csv`)
 - **全層探索因果局所化スイープ**: `v3/scripts/run_causal_localization_sweep.py` $\rightarrow$ `v3/results/causal_localization_sweep_joint_ot.csv`
 - **生成時因果スイープ (Qwen / Llama)**: `v3/scripts/run_generation_time_causal_sweep.py` $\rightarrow$ `v3/results/generation_time_causal_sweep.csv`, `..._llama.csv`
 

@@ -902,7 +902,7 @@ G_\ell = 1 - \frac{\mathrm{OT}_{VA}(P_{\mathrm{patch}}, P_{\mathrm{peak}})}{\mat
 この全数コホート評価から、以下の明確な結論が導かれる：
 
 1. **Stage 1とStage 2の一貫性と再現性 (Consistency Across Cohorts)**:
-   Stage 1の15ペアスクリーニングで検出された後段Residual streamの急峻な因果レバレッジ出現は、Stage 2の39ペア全数コホート評価において極めて高い精度で再現された（L18: 40.01% $\rightarrow$ 41.48%, L20: 46.31% $\rightarrow$ 50.22%, L24: 47.74% $\rightarrow$ 53.48%）。この一貫性は、観察された因果レバレッジの局在化が少数の外れ値や標本抽出ノイズによるものではなく、モデルの自己報告生成機構に内在する堅固な構造であることを証明している。
+   Stage 1の15ペアスクリーニングで検出された後段Residual streamの急峻な因果レバレッジ出現は、Stage 2の39ペア全数コホート評価において極めて高い精度で再現された（L18: 40.01% $\rightarrow$ 41.48%, L20: 46.31% $\rightarrow$ 50.22%, L24: 47.74% $\rightarrow$ 53.48%）。この一貫性は、観察された因果レバレッジの局在化が、少数の外れ値や15-pair subset特有の標本変動だけでは説明しにくいことを示している。
 2. **Prompt-Time Local Causal Recoveryの極小性 (Low Prompt-Time Recovery under Matched Substitution)**:
    プローブ解読能がピークに達する Layer 15 MLP（$R^2 = 0.5610$）の Prompt-time 回復率は、有効32 pairs平均で **わずか 0.06%（中央値 0.07%）** であり、検証した全6層・全コンポーネントを通じても最大 1.08%（L14 MLP）に留まる。15 pairs から 39 pairs への全数拡張によっても、Prompt-time における局所因果回復の極小性は揺るぎなく支持された。
 3. **Generation-Time における時空間的解離（Spatiotemporal Dissociation）**:
@@ -911,12 +911,12 @@ G_\ell = 1 - \frac{\mathrm{OT}_{VA}(P_{\mathrm{patch}}, P_{\mathrm{peak}})}{\mat
    - **外れ値駆動ではない頑健性**: *Importantly, the large late-residual effects were not driven by a small number of outlying pairs. At L20 and L24, median recovery was 57.93% and 59.44%, respectively, with positive recovery in 97.4% and 94.9% of valid matched pairs.*（極めて重要な点として、後段Residualにおける強力な因果回復効果は少数の外れ値ペアによって引き上げられたものではない。Layer 20および24における中央値回復率はそれぞれ 57.93% および 59.44% に達し、有効ペアの 97.4% および 94.9% で正の回復が確認された。IQRも [34.3%, 66.2%] および [39.9%, 70.9%] と堅固に正領域へ集中している）。
 4. **単一層射影Attention出力からの限定的因果回復 (Limited causal recovery from single-layer projected Attention outputs)**:
    Attentionデコーダビリティが最大であった Layer 18（$R^2 = 0.5495$）を含め、全後段層において Attention output 置換の回復率は負値または 1% 未満（L18: -7.74%, L20: 1.01%, L24: -0.07%）であり、tested single-layer projected Attention outputs did not show strong local causal recovery（本実験で検証した単一層の射影済みAttention出力は、生成時においても強い局所因果回復を示さなかった。ただしこれはHead単位や系列回路を否定するものではない）。
-5. **本研究の中心知見: Decodability peak $\neq$ Causal leverage peak (Peak-Site Contrast as Primary Evidence)**:
+5. **本研究の中心知見: Direct Peak-Site Contrast as Primary Evidence**:
    このpeak-site contrastは、本研究で観察されたdecodabilityとlocal causal leverageの解離を最も直接的に示す効果量ベースの証拠である（*The peak-site contrast provides the most direct effect-size evidence for the dissociation observed in this study*）：
    $$
    \Delta G = G_{\mathrm{L24,RESID}} - G_{\mathrm{L15,MLP}} = +52.09\% \quad (95\%\text{ bootstrap CI: } [+44.4\%, +59.7\%])
    $$
-   すなわち、「全層におけるSpearman相関（$\rho \approx 0$）」は補助的証拠に過ぎず、この**Peak-site contrast（$\arg\max_{\ell,c} D_{\ell,c} \neq \arg\max_{\ell,c,t} G_{\ell,c,t}$）こそが本研究の主たる実証的証拠（primary evidence）**である。線形解読能が最大化する中盤部位（Layer 15 MLP: $R^2=0.561$, Prompt 0.06%, Gen 1.39%）には局所因果レバーが存在せず、検証した局所因果回復プロファイルは自己報告直前の後段 Residual/MLP 側へ顕著にシフトする（*tested local causal recovery profile shifted toward late Residual/MLP sites during report generation*）。
+   全28層の探索的Spearman相関（$\rho \approx 0$）は補助的証拠に過ぎず、全数コホートで評価した代表部位間における直接的な効果量対比——すなわち、**全層プローブ最高部位（Layer 15 MLP: $D=0.561, G=1.39\%$）と、評価した全数代表部位において最大回復を示した部位（the strongest recovery among the evaluated full-cohort representative sites, Layer 24 Residual: $D=0.147, G=53.48\%$）との間の劇的な双方向解離**——こそが本研究の中心命題を支える主たる実証的証拠（primary evidence）である。線形解読能が最大化する中盤部位には局所因果レバーが存在せず、検証した局所因果回復プロファイルは自己報告直前の後段 Residual/MLP 側へ顕著にシフトする（*tested local causal recovery profile shifted toward late Residual/MLP sites during report generation*）。
    なお、これは因果メカニズムの全体像が後段Residual単独に完全に局所化されていることを意味するものではなく、検証した局所スライス置換介入ファミリにおいて因果的レバレッジが後段に出現するという実証的解離を示すものである。
 
 15.6 Experiment 11c: Multi-Layer Simultaneous Residual Stream Patching (Redundant vs. Additive Causal Leverage)
@@ -942,12 +942,12 @@ G_\ell = 1 - \frac{\mathrm{OT}_{VA}(P_{\mathrm{patch}}, P_{\mathrm{peak}})}{\mat
 | 7層連続 | L18〜L24 RESID (全置換) | 55.35% | 62.77% | [47.8%, 62.6%] | [40.95%, 72.90%] | 97.4% |
 
 **メカニズム的解釈**:
-1. **加算性の棄却と回復率の飽和（Saturation at ~55%）**:
-   単一層介入（L24: 55.08%）に対し、2層同時（55.67%）、3層同時（55.74%）、7層連続（55.35%）と介入対象層を増やしても、回復率は完全に同一のプラトー（約55.5%、中央値約62%）で飽和した。
-2. **情報の冗長伝播（Redundant / Shared Transmission）**:
-   この結果は、Layer 18〜24のResidual Streamが互いに独立した加算的因果シグナルを累積しているのではなく、同一の情動表現が共通のResidual Streamチャネルを通じて前方に伝送されている（overlapping/redundant stream）ことを示している。
-3. **局所ボトルネック解釈の補強**:
-   したがって、L24 Residual単独で達成される53〜55%の回復は、局所的な特異点ではなく、後段Residual Stream全体に共有されている支配的因果チャネルを十分に捕捉していることを意味する。多層を同時に置換しても残存する約45%の未回復分は、トークン位置を越えた系列全体の分散表現や初期プレフィックス埋め込みとの相互作用に起因することを示唆している。
+1. **飽和プロファイルと非加算性（Saturation at ~55%）**:
+   単一層介入（L24: 55.08%）に対し、2層同時（55.67%）、3層同時（55.74%）、7層連続（55.35%）と介入対象層を増やしても、回復率はほぼ同一のプラトー（約55.5%、中央値約62%）に留まった。
+2. **冗長または飽和的な因果寄与（Redundancy or Downstream Saturation）**:
+   *These results are consistent with substantial redundancy or saturation across late residual sites, rather than additive independent contributions.*（この結果は、後段Residual Streamの各層が互いに独立した加算的寄与を累積しているというよりは、後段部位間における実質的な冗長性や下流計算での飽和、あるいは介入状態間の依存性と整合する）。
+3. **解釈の境界づけ**:
+   本実験系単体では、同一情報の再伝播、下流の感度飽和（downstream saturation ceiling）、あるいはパッチされた表現間の相互依存を確定的に分離することはできない。しかし少なくとも、後段Residual Streamの複数部位への同時介入が単層介入を大幅に上回る追加的因果レバレッジをもたらさないという実証的境界を提供する。多層を同時に置換しても残存する約45%の未回復分は、トークン位置を越えた系列全体の分散表現や初期プレフィックス埋め込みとの相互作用に起因することを示唆している。
 
 ⸻
 
@@ -1252,7 +1252,7 @@ Appendix B. Reproducibility & Artifact Mapping
     出力画像: `v3/results/figure1_four_panel_dissociation.png`, `v3/results/figure1_four_panel_dissociation.pdf`
 * **ブートストラップ95%信頼区間計算モジュール**:
     スクリプト: `v3/scripts/compute_bootstrap_ci.py`
-    仕様: $N_{\mathrm{boot}}=2000$、シード 42、パーセンタイル法による両側95%信頼区間（入力: `focused_causal_sweep_39pairs.csv`, `generation_multilayer_residual_results.csv`）
+    仕様: $N_{\mathrm{boot}}=2000$、シード 42、パーセンタイル法による両側95%信頼区間（入力: `v3/results/focused_causal_sweep_39pairs_pair_level.csv`, `v3/results/generation_multilayer_residual_results.csv`。各ペアの生リカバリー率から各条件の95% CIおよびPaired Peak-Site Contrast $\Delta G = G_{\mathrm{L24,RESID}} - G_{\mathrm{L15,MLP}}$ を直接再計算・完全再現）
 * **先行アライメント・幾何学・多層実験データ**:
     `v3/results/ridge_alpha_sweep_results.csv`
     `v3/results/aligned_patching_results.csv`

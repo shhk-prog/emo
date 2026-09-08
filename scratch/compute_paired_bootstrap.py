@@ -85,9 +85,11 @@ def main():
 
     # 1. L15 MLP
     print("Evaluating L15 MLP...")
-    target_mod_l15 = get_component_module(model, 15, "mlp", layers_dict)
+    target_mod_l15 = get_component_module(model, 15, "mlp")
     l15_mlp_recs = []
+    pids = []
     for pid, peak_row, neut_row in valid_pairs:
+        pids.append(pid)
         p_prompt = format_base_prompt(peak_row['text'])
         n_prompt = format_base_prompt(neut_row['text'])
         _, tpos, _ = build_generation_prefix_inputs(tokenizer, n_prompt, PREFIX_STR, device=device)
@@ -100,11 +102,11 @@ def main():
         r_ot, _, _, is_valid = compute_joint_ot_recovery(
             p_mat, base_cache_gen[pid]["p_peak"], base_cache_gen[pid]["p_neut"], eps_rec=0.05
         )
-        l15_mlp_recs.append(r_ot * 100.0)
+        l15_mlp_recs.append(r_ot * 100.0 if (is_valid and r_ot is not None) else 0.0)
 
     # 2. L24 Resid
     print("Evaluating L24 Resid...")
-    target_mod_l24 = get_component_module(model, 24, "resid", layers_dict)
+    target_mod_l24 = get_component_module(model, 24, "resid")
     l24_resid_recs = []
     for pid, peak_row, neut_row in valid_pairs:
         p_prompt = format_base_prompt(peak_row['text'])
@@ -119,7 +121,7 @@ def main():
         r_ot, _, _, is_valid = compute_joint_ot_recovery(
             p_mat, base_cache_gen[pid]["p_peak"], base_cache_gen[pid]["p_neut"], eps_rec=0.05
         )
-        l24_resid_recs.append(r_ot * 100.0)
+        l24_resid_recs.append(r_ot * 100.0 if (is_valid and r_ot is not None) else 0.0)
 
     l15_arr = np.array(l15_mlp_recs)
     l24_arr = np.array(l24_resid_recs)
@@ -128,6 +130,16 @@ def main():
     ci_l15 = bootstrap_ci(l15_arr)
     ci_l24 = bootstrap_ci(l24_arr)
     ci_delta = bootstrap_ci(delta_arr)
+
+    # Save pair-level results for reproducibility
+    pair_df = pd.DataFrame({
+        "pair_id": pids,
+        "l15_mlp_recovery": l15_arr,
+        "l24_resid_recovery": l24_arr,
+        "delta_g": delta_arr
+    })
+    pair_df.to_csv("v3/results/focused_causal_sweep_39pairs_pair_level.csv", index=False)
+    print("Saved pair-level results to v3/results/focused_causal_sweep_39pairs_pair_level.csv")
 
     print("\n" + "="*50)
     print(f"L15 MLP Mean: {np.mean(l15_arr):.2f}%, 95% CI: [{ci_l15[0]:.2f}%, {ci_l15[1]:.2f}%]")
