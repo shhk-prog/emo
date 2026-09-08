@@ -1768,7 +1768,7 @@ $$
 #### Reproducibility
 * **Implementation Script**: `v3/scripts/run_probe_aligned_necessity_sweep.py`
 * **Artifact / Output**: `v3/results/probe_aligned_necessity_sweep.csv`
-* **Protocol Details**: 15 pairs, seed 42. 84 sites (28 layers $\times$ 3 components). Generation prefix last token. Linear subspace ablation: $h' = h - (h \cdot \hat{v}_{\mathrm{probe}})\hat{v}_{\mathrm{probe}}$. Paired t-test on log-odds shift; Benjamini-Hochberg FDR across 84 hypotheses.
+* **Protocol Details**: 15 matched pairs, seed 42. 84 sites (28 layers $\times$ 3 components). Token Position: Prompt final token (`target_pos = prompt_len - 1`), not generation-prefix position. Probe-aligned direction removal was defined as $h' = h - (h^\top \hat v_{\mathrm{probe}})\hat v_{\mathrm{probe}}$. The primary effect metric was the 2D Joint OT displacement between the original Peak distribution and the ablated distribution. Specificity was assessed against isotropic and probe-orthogonal random-direction null distributions using standardized Z-scores and pseudo-count empirical p-values, followed by Benjamini–Hochberg FDR correction across the prespecified hypothesis family.
 
 ---
 
@@ -1780,7 +1780,7 @@ $$
 #### Reproducibility
 * **Implementation Script**: `v3/scripts/run_focused_necessity_n100.py`
 * **Artifact / Output**: `v3/results/focused_necessity_sweep_n100.csv`
-* **Protocol Details**: 39 pairs, 100 random directions per component, seed 42. Representative 5 layers (10, 15, 18, 20, 24) $\times$ 3 components (15 sites). Generation prefix last token. Empirical null distribution of projection shifts; BH-FDR across 15 sites.
+* **Protocol Details**: 39 pairs, 100 random directions per component, seed 42. Representative 5 layers (10, 15, 18, 20, 24) $\times$ 3 components (15 sites). Token Position: Prompt final token (`target_pos = prompt_len - 1`), not generation-prefix position. Empirical null distribution of projection shifts; BH-FDR across 15 sites.
 
 ---
 
@@ -1821,7 +1821,7 @@ Qwen2.5-1.5B-Instructで得られた時空間的解離が、アーキテクチ�
 * **Attention output**: Layer 3で 0.41%、Layer 4で **最大 0.73%**、Layer 14で 0.11% の微小な正の回復率が観測されたが、全体として 1% 未満に留まった。
 * **Residual stream**: Layer 0（**-36.18%**）からLayer 15（**-4.23%**）に至る全層で一貫して負値（中央値 -18.7%）を示した。
 
-すなわち、Qwen2.5-1.5Bで観測された「後段Residual streamにおける約53%の因果回復」はLlama-3.2-1B-Instructでは再現されず、因果レバレッジの局所化パターンがモデルファミリーや事後学習手法に依存して異なり得ることが実証された。
+すなわち、Qwen2.5-1.5Bで観測された「後段Residual streamにおける約53%の因果回復」はLlama-3.2-1B-Instructでは再現されず、因果レバレッジの局所化パターンがモデルファミリーや学習履歴に依存する可能性と整合する。
 
 #### Reproducibility
 * **Verified Command**: `python v3/scripts/run_generation_time_causal_sweep.py --model meta-llama/Llama-3.2-1B-Instruct`
