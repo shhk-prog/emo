@@ -1,159 +1,248 @@
-Decodability Does Not Localize Causal Leverage: An Affect-Based Case Study in Language Models
+Decodability Does Not Localize Causal Leverage: 言語モデルにおける表現アクセス可能性と因果レバレッジの時空間的解離
 
-Abstract
+要旨
 
-大規模言語モデル（Large Language Models; LLMs）の内部状態から、言語構造、知識、真偽、安全性、感情的属性などを高精度に線形デコードできることが多数報告されている。しかし、内部状態から情報を予測できること（decodability）と、その表現部位がモデル自身の下流計算において当該情報を因果的に利用していること（causal use）は同値ではない。本研究では、この古典的なrepresentation–use distinctionを、Qwen2.5-1.5B Base/Instructモデルペアにおけるaffect-relevant representationsをケーススタディとして体系的に検証する。
+大規模言語モデル（Large Language Models; LLMs）の内部活性化から、統語情報、知識、真偽、安全性、社会的属性、感情関連属性などを高精度に線形デコードできることが広く報告されている。しかし、ある属性が内部活性化から線形に読み出せることは、その活性化部位がモデル自身の下流計算において当該属性を強く制御する局所的因果点であることを意味しない。本研究では、この representation–use distinction を、Qwen2.5-1.5B-Instruct における affect-relevant representations をケーススタディとして体系的に検証する。
 
-本研究では、明示的な感情語彙による表層交絡を制御したAIPsy-Affect Strict Expandedデータセット（192 pair-id groups / 422 samples）、81通りのValence–Arousal（VA）候補列を用いた制約付きsequence-likelihood evaluation、全28層のlinear probing、Base→Instruct表現アライメント、多変量OOD診断、およびwithin-model matched activation substitutionを統合した。
+感情語彙などの表層交絡を制御した AIPsy-Affect Strict Expanded データセット（192 pair-id groups, 422 samples）を用い、81通りの離散 Valence–Arousal（VA）候補列に対する制約付き sequence-likelihood distribution、全28層・3コンポーネントの線形プロービング、matched activation substitution、probe-aligned projection ablation、および生成時介入を統合した。因果効果は、$9\times9$ VA 格子上の Manhattan ground cost に基づく2次元 Joint Optimal Transport（Joint OT）を用いて評価した。
 
-主要な発見は以下の3点に集約される：
+第一に、affective peak 対 neutral 条件は中間層で最も強く線形デコード可能であり、MLPでは Layer 15（held-out $R^2=0.5610$）、Attentionでは Layer 18（$R^2=0.5495$）、Residual streamでは Layer 14（$R^2=0.5016$）で最大となった。
 
-第一に、affective peak versus neutral conditionの線形decodabilityは中間層で高く、MLPではLayer 15（$R^2=0.561$）、AttentionではLayer 18（$R^2=0.550$）、Residual streamではLayer 14（$R^2=0.502$）で最大となった。
+第二に、この高い線形アクセス可能性は、同じ部位における大きな局所因果レバレッジを意味しなかった。39組の held-out matched pairs を用いた評価では、最高解読部位である Layer 15 MLP の Prompt-time matched-substitution recovery は平均 $0.51%$（中央値 $0.47%$）、Generation-timeでも $-0.06%$（中央値 $0.50%$, 95% bootstrap CI $[-2.02%,1.83%]$）に留まった。また、Prompt-time全層探索では decodability と local recovery の間に強い単調関係は支持されなかった。
 
-第二に、この高い線形アクセス可能性は局所因果レバレッジを意味しない。初期15-pair探索スクリーニングではLayer 15 MLPのPrompt-time回復率は1.00%に留まり、39-pair focused full-cohort evaluationではさらに0.51%（中央値0.47%）であった。Generation-timeでも-0.06%（中央値0.50%, 95% CI: [-2.0%, +1.8%]）に留まった。Prompt-time探索的全層スクリーニングでは、層別decodabilityとlocal causal recoveryの間に統計的に検出可能な単調関係は認められなかった（$\rho \le 0.296, p > 0.05$）。
+第三に、学習済み線形プローブ方向を活性化から射影除去しても、出力分布は系統的に neutral 条件へ近づかなかった。その変位は probe-orthogonal random directions の除去による変位と統計的に区別できず、全84サイトの Benjamini–Hochberg FDR 補正後に有意な部位は存在しなかった。
 
-第三に、自己報告生成直前には、prompt-time decodabilityが比較的低い後段Residual streamに強いmatched-substitution recoveryが出現した（Layer 24: prompt-time $R^2=0.147$, generation-time recovery = 53.24% [中央値 61.57%, 95% CI: +45.7% to +60.5%]）。一方、学習済みプローブ方向の幾何学的射影消去は系統的な中和をもたらさず、直交ランダム方向消去を上回る特異的効果を示さなかった。なお、Llama-3.2-1B-Instructでの初期部分追試では後段Residual局在は再現されず、モデル依存性が示唆された。
+第四に、介入を自己報告生成直前へ移すと、局所因果レバレッジは後段 Residual stream に出現した。Layer 24 Residual の Generation-time recovery は $53.24%$（中央値 $61.57%$, 95% bootstrap CI $[45.74%,60.45%]$）に達した。最高解読部位 Layer 15 MLP と Layer 24 Residual の同一39ペア内の直接対比では、
 
-以上の結果は、**表現のアクセス可能性（accessibility）と局所的因果レバレッジ（local causal leverage）が経験的に解離し得る（empirically dissociable）別個の性質である**ことを示す。Linear probingが情報を外部から読み取れる場所を同定しても、その情報がモデルの下流計算において強い因果的影響力を持つ場所、時点、あるいは方向をそれ自体では同定しない。すなわち、**Decodability does not localize causal leverage**。
+[
+\Delta G
+
+G_{\mathrm{L24,Resid}}
+
+G_{\mathrm{L15,MLP}}
+
+53.30%
+]
+
+となり、95% bootstrap CI は $[45.34%,61.16%]$ であった。
+
+したがって、本研究が示すのは、線形プロービングによる表現のアクセス可能性（accessibility）、matched substitution に対する局所因果レバレッジ（local causal leverage）、および probe direction の方向特異的必要性（direction-specific necessity）が、経験的に異なる性質であるということである。線形プロービングは情報を外部から読み取れる場所を同定するが、その情報がモデル自身の計算においてどこで、いつ、どの方向に沿って因果的に有効になるかを、それ自体では同定しない。
+
+[
+\boxed{\text{Decodability does not localize causal leverage.}}
+]
 
 ⸻
 
-1. Introduction
+1. はじめに
 
-大規模言語モデルの内部表現を解析する代表的な方法の一つにlinear probingがある。特定層のhidden stateから属性ラベルを線形分類・回帰によって高精度に予測できる場合、その内部状態に当該属性に関する情報がアクセス可能な形で存在すると解釈できる。
+大規模言語モデルの内部表現を分析する標準的方法の一つとして linear probing が広く利用されている。ある層の hidden state から属性ラベルを線形分類器または線形回帰器によって高精度に予測できる場合、その属性に関する情報が当該活性化に線形アクセス可能な形で存在すると解釈される。
 
-近年では、真偽、安全性、拒否、感情、人格、社会的属性など、多様な概念について高いprobe performanceが報告されている。一方で、probing研究では以前から、probeが情報を読み取れることと、モデル自身がその情報を下流計算に利用していることは区別すべきであると指摘されてきた。Amnesic Probingなどの研究が示す通り、
+この方法は、統語構造、意味情報、知識、真偽、安全性、拒否挙動、感情極性、人格や社会的属性など、多様な対象に適用されてきた。しかし、ここには重要な解釈上の非対称性が存在する。Linear probe が直接示しているのは、
+
+外部の読み出し器が、その活性化から情報を再構成できる
+
+という事実である。
+
+それは必ずしも、
+
+モデル自身が、その場所で、その線形方向を用いて、その情報を下流行動の形成に利用している
+
+ことを意味しない。
+
+したがって、
 
 [
-\mathrm{Decodability}
+\text{Linear Decodability}
 \not\Rightarrow
-\mathrm{Behavioral\ Use}
+\text{Local Causal Leverage}
 ]
 
-である。
+という区別が必要である。
 
-この問題は、post-trainingを経たLLMの内部表現を研究する場合に特に重要となる。Instruction tuningやpreference optimizationを受けたモデルは、同一architectureのBaseモデルと比較して出力方策が大きく異なる。一方で、内部状態にはBaseモデルと類似した意味情報が依然として読み取れる場合がある。
+この representation–use distinction 自体は probing literature において以前から指摘されてきた。しかし、自己回帰型LLMにおいては、さらに「時間」の問題が加わる。ある属性が Prompt 処理中に特定層から強く読み取れるとしても、その属性が実際に出力へ影響する計算は、応答生成時に別の層や別の表現状態へ再構成される可能性がある。
 
-本研究では、このrepresentation–use gapを感情関連表現を用いて検証する。
+したがって、少なくとも以下を区別しなければならない。
 
-Qwen2.5-1.5B-Instructへ感情的な文章を提示し、
+1. Accessibility
+    どこから情報を外部線形読み出し器が復元できるか。
+2. Local causal leverage
+    その部位の活性化を反実仮想的に置換したとき、下流出力がどの程度変化するか。
+3. Direction-specific necessity
+    プローブが同定した特定の線形方向を除去したとき、その情報に対応する出力が選択的に失われるか。
+4. Temporal recruitment
+    その因果的影響力が Prompt 処理時に存在するのか、あるいは自己回帰的な応答生成の途中で初めて現れるのか。
+
+本研究では、この4つを同一のモデル、同一の刺激ペア、同一の出力分布上で直接比較する。
+
+ケーススタディには affect-relevant textual conditions を用いる。ここで本研究は、LLMが主観的な感情経験を有することを主張するものではない。「first-person report」はあくまでモデルに要求した文法的・task-levelな出力形式を意味する。
+
+主対象である Qwen2.5-1.5B-Instruct に感情関連テキストを提示し、
 
 {"valence": 5, "arousal": 5}
 
-のような一人称形式のVA報告を要求すると、greedy decodingはほぼ常に中立値へ集中する。しかし、その同じモデルの内部activationからは、文章がaffective peak conditionであるかneutral conditionであるかを高精度に予測できる。
+のような VA 報告を要求すると、greedy decoding はほぼ完全に中立値へ集中する。一方で、81個の VA 候補列全体の sequence-likelihood distribution や内部 hidden representations には刺激条件に依存する情報が残る。
 
-この観察だけから、
+そこで本研究では、以下を問う。
 
-「モデルには感情情報があるがpost-trainingにより出力から抑制された」
+Research Questions
 
-と結論することはできない。
+RQ1. Greedy first-person report が中立化していても、候補出力分布には刺激依存的構造が残るか。
 
-少なくとも以下の説明が存在する。
+RQ2. Affect-related condition はモデル内部のどの層・コンポーネントから線形に読み出せるか。
 
-1. Representational attenuation or transformation
-    感情関連情報が内部表現空間において減衰・変形している。
-2. Output-level neutralization
-    情報は内部に残っているが、greedy outputのみが中立値へ集中している。
-3. Local causal dissociation
-    情報はある層からdecodableであるが、その局所activation slice自体はreport generationの因果的ボトルネックではない。
-4. Distributed or dynamic use
-    情報はsequence-wide states、attention pathways、複数層の相互作用、あるいはresponse generation時のhidden statesを介して利用される。
-5. Representational transformation across models
-    Base/Instruct間で情報の座標系が変化しているため、単純なcross-model transferが失敗する。
+RQ3. 高い decodability を示す部位は、Prompt-time において大きな local causal leverage を示すか。
 
-これらを区別するには、単なるprobe performanceだけでは不十分である。
+RQ4. Probe が同定した線形方向は、下流出力に対して方向特異的に必要か。
 
-本研究では、
+RQ5. Local causal leverage は自己報告生成のどの時点・どの部位で出現するか。
 
-* output measurement,
-* within-model decoding,
-* cross-model alignment,
-* distributional geometry,
-* within-model substitution,
-* cross-model patching,
-
-を同一の実験系で接続する。
-
-1.1 Research Questions
-
-本研究では次の5つの研究質問を設定する。
-
-RQ1. Greedyなfirst-person reportが中立化していても、候補出力分布には刺激依存的構造が残るか。
-
-RQ2. Affect-related conditionは、Base/Instructモデルの内部表現からどの程度線形にdecodableか。
-
-RQ3. Base/Instruct間の内部表現は、held-out data上でどの程度predictively align可能か。
-
-RQ4. Predictively aligned representationsは、target modelの自然なactivation distributionにも統計的に適合するか。
-
-RQ5. 高いdecodabilityを示すactivation sitesは、対応するfirst-person reportに対して大きなlocal causal leverageを持つか。
-
-本研究の主たる焦点はRQ5である。
+本研究の中心的な問いは RQ3–RQ5 である。
 
 ⸻
 
-2. Conceptual Definitions
+2. 関連研究 (Related Work)
 
-本研究では、「感情」という語による擬人観的解釈を避けるため、以下の構成概念を明確に分離する。
+本研究は、(i) linear probing による表現アクセス可能性の測定、(ii) activation patching による因果的介入、(iii) 線形表現仮説と concept erasure、(iv) LLM における感情・感情極性表現の研究という4つの先行研究群と関わる。以下ではそれぞれを概観し、本研究の新規性を位置づける。
 
-2.1 Reader-rated text affect
+2.1 Linear Probing とその方法論的限界
 
-EmoBank等で人間読者が文章から受けるValence/Arousal評定を指す。
+Linear probing は、モデルの中間表現からある属性を線形分類器・回帰器で予測できるかを測定する手法として、統語構造や意味情報の分析に広く用いられてきた。しかし、probing 手法には早くから方法論的な限界が指摘されている。Hewitt and Liang (2019) は、probe 自体が十分な表現力を持つ場合、probe がデータのランダムな統計的相関を記憶しているだけでも高い精度を示しうることを示し、control tasks という手法で probe の「選択性」（selectivity）を評価する枠組みを提案した。この研究は、probe 精度の高さそれ自体がモデル内部にその情報が「表現されている」ことの十分な証拠にはならないことを明確にした最初期の研究の一つである。
 
-これはモデル自身の内部状態とは独立した外部基準である。
+Belinkov (2021, 2022) によるサーベイは、probing classifiers の前提・欠点・改善の方向性を包括的に整理し、probing が示すのは「情報が表現から復元可能である」という事実に過ぎず、「モデルがその情報を実際にタスク遂行に使用している」ことは別の主張であると強調している。この区別は、しばしば representation–use distinction あるいは representation–utilization gap と呼ばれ、本研究が採用する Accessibility と Local Causal Leverage の区別の直接的な理論的先行研究である。
 
-2.2 Third-person affect recognition
+さらに Ravfogel et al. (2020, 2022) らによる concept erasure 研究では、学習された線形方向（あるいは非線形の nullspace）を除去した後もモデルの下流性能がある概念について変化しない、あるいは概念自体が別の非線形符号化を通じて残存する事例が報告されている。加えて、Kumar et al. (2022) による "Probing Classifiers Are Unreliable for Concept Removal and Detection" は、probe-derived direction の除去が概念の完全な除去を保証しないことを示し、probe 方向の因果的十分性に疑問を投げかけている。本研究の probe-aligned projection ablation と random-direction null control は、この系譜に属する検証手法である。
 
-文章中の人物、筆者、話者などの感情状態をモデルに評価させるタスクである。
+2.2 Activation Patching と Causal Tracing
 
-2.3 Constrained first-person report distribution
+Probing の限界を補うため、mechanistic interpretability 研究では、活性化を反実仮想的に置換する activation patching（causal tracing、interchange intervention とも呼ばれる）が標準的な因果的検証手法として確立している。この手法は、clean run・corrupted run・patched run の3段階比較により、特定のモデル構成要素が下流出力にどの程度因果的に影響するかを定量化する。
 
-モデルに、
+Meng et al. (2022) の ROME（Rank-One Model Editing）研究は、causal tracing によって事実関連付けの記憶が mid-layer MLP の主語トークン処理時に局在することを示し、その知見に基づいて rank-one weight editing で事実を書き換える手法を提案した点で、本研究に方法論的に最も近い先行研究の一つである。ROME の因果的発見は、「終端層の attention による情報のコピー」と「中間層 MLP による想起」という二段階の temporal/spatial な分離を示しており、本研究の Prompt-time と Generation-time の時間的分離という着想と構造的に類似する。ただし、ROME では主に単一事実に対する強い局在（高い recovery 率）が報告されている一方、本研究ではむしろ、高い decodability を示す部位が極めて低い local recovery を示すという逆方向の解離を報告する点で対照的である。
 
-Read the following text and report your affective state.
+また、Hase et al. (2024) による "Does Localization Inform Editing?" ([PDF](https://asmadotgh.github.io/assets/pdf/13353_does_localization_inform_editi.pdf)) は、causal tracing によって特定された「重要な」層に対する編集が、必ずしも他の層への編集より効果的でないことを報告しており、localization の結果と editing 上の因果的有効性が一致しない場合があることを示している。この知見は、本研究の decodability（probing による localization の一種）と local causal leverage の解離という主張と一貫する。
 
-と指示した後、
+Zhang and Nanda (2024) は、activation patching の実践における metric の選択（logit 差分の推奨）、corruption 戦略（Gaussian noise patching と symmetric token replacement の比較）、および 100% recovery を「完全な局在」、部分的 recovery を「分散計算」の証拠とみなす解釈規範を整理した、activation patching のベストプラクティスに関する体系的研究である。本研究の Joint Optimal Transport に基づく recovery 指標は、この枠組みにおける metric 選択の一つの拡張として位置づけられる。従来の activation patching 研究がスカラー logit 差分や単一トークンの確率を指標とするのに対し、本研究は81候補からなる離散 VA 分布全体の形状変化を、Manhattan ground cost を用いた2次元 Joint Optimal Transport で評価する。これは、属性が単一の yes/no 出力ではなく多次元的な分布として表現される場合の、より高解像度な因果効果測定を提供する。
 
-{"valence": v, "arousal": a}
+2.3 因果的位置の時間的側面
 
-という有限候補列に割り当てられる条件付き確率分布を指す。
+本研究の Generation-time 解析に関連する先行研究として、causal tracing における「early site」と「late site」の区別が既に存在する。ROME の分析では、事実の想起は middle-layer MLP で生じる一方、その情報の出力への伝達は late layer の attention 機構によるコピー操作として分離されることが報告されている。しかし、これらの研究は主に Prompt 処理内での層間の時間的分離を扱っており、本研究のように、単一の Prompt-time 評価点と、自己回帰的な応答生成の途中（生成直前のトークン位置）という、生成プロセス全体を跨いだ時間的比較を体系的に行った研究は非常に限られている。
 
-本稿における“first-person”は文法的・task-levelな形式を表すのみであり、モデルが自己状態へのprivileged introspective accessを持つことを意味しない。
+Inference-Time Intervention (ITI; Li et al., 2024) は、少数の attention head に沿った学習済み方向へ生成時に活性化をシフトすることで truthfulness を改善する手法であり、生成過程における介入の重要性を示した先行研究である。ITI は Prompt 処理後の生成過程全体にわたって介入を行う設計であるが、本研究のように、同一属性について Prompt-time と Generation-time 直前という異なる時点での matched-substitution recovery を直接対比し、両者の間の非単調な乖離を定量化した研究は、著者らの知る限り確認できない。
 
-2.4 Affect-relevant representation
+2.4 線形表現仮説とその反証
 
-刺激のaffective conditionまたはhuman-rated VA informationを線形に予測可能な内部activationを指す。
+本研究の前提の一部は、線形表現仮説（linear representation hypothesis）、すなわち高次概念が活性化空間内の線形方向として符号化されるという仮説に依拠する。この仮説は、Representation Engineering (RepE; Zou et al., 2023) の枠組みにおいて、神経科学的な手法（LAT scan）を模した形で体系化され、Linear Artificial Tomography（LAT）による刺激設計・神経活動収集・線形モデル構築という三段階の手続きが提案された。RepE はさらに、線形方向をトップダウンに操作することでモデル行動を制御する representation control 手法を提示している。
 
-これはsubjective affective experienceの存在を意味しない。
+一方、この仮説に対する反証的な研究群も蓄積されている。"On the Failure of a Universal Linear Representation Hypothesis in Deep Neural Networks" は、ある関数族に対して線形方向による概念復元が理論的に不可能であることを情報理論的下界とともに示し、"On the Limits of Linear Representation Hypotheses in Large Language Models" は、カオス的動力学の下で軌道が指数的に分岐する条件下では線形表現が破綻することを論じている。本研究の probe-aligned direction ablation が random orthogonal direction と統計的に区別できなかったという結果は、これらの反証研究と整合的であり、少なくとも Qwen2.5-1.5B-Instruct の affect-relevant representation については、probe が同定した特定の線形方向が、モデル自身の計算にとって特異的に必要な因果方向ではなかったことを支持する。
 
-2.5 Operational Definition of Local Causal Leverage
+2.5 感情・感情極性のLLM内部表現に関する研究
 
-本稿でいうlocal causal leverage（局所的因果レバレッジ）とは、特定layer/component/token positionのactivationをmatched counterfactual activationで置換した際に、下流出力分布がcounterfactual targetへ移動する程度（tested matched-substitution recovery）を指す操作的概念である：
+LLM の感情関連表現を対象とした先行研究も近年増加している。Di Palma et al. (2025) ([ACL 2025](https://aclanthology.org/2025.acl-long.306/)) は、probe classifier を用いて複数の LLM における感情極性の layer-wise encoding を分析し、感情情報が mid-layer に最も集中していることを報告した。この結果は、本研究が Qwen2.5-1.5B-Instruct の MLP Layer 15、Attention Layer 18、Residual Layer 14 において最大 decodability を観測した知見と方向性として一致する。
 
-$$
-\text{Local Causal Leverage} := \text{output sensitivity / recovery under the tested matched-substitution intervention}
-$$
+また、"A Unified View on Emotion Representation in Large Language Models" は、複数の LLM 間で共通する感情表現が later layer に存在し、感情の方向を捉えるベクトルが感情理解タスクと関連することを報告している。さらに、"Emotion Beyond Language: Probing Multilingual..." と題する研究は、20の感情カテゴリと13言語にわたる instruction-tuned LLM の感情表現を probing により分析している。
 
-本定義は、当該部位を計算の起源・唯一の因果経路・必要条件とみなすことなく、検証した介入下での出力感受性を定量化するための操作的定義である。
+これらの先行研究は、いずれも probing 精度あるいは表現の存在自体を主要な証拠として結論を導いている点で共通しており、その表現の因果的な下流利用を、matched activation substitution のような介入によって直接検証した研究は確認できない。本研究は、これらの感情表現研究と同一の Qwen ファミリーモデルを対象としつつ、probing 結果を出発点ではなく前提条件として位置づけ、その先の因果的検証を主目的とする点で異なる。
+
+2.6 本研究の新規性と位置づけ
+
+以上の先行研究を踏まえると、本研究の新規性は以下の5点に整理できる。
+
+1. **Accessibility、Local Causal Leverage、Directional Necessity の体系的対比:** 多くの probing 研究（Belinkov, 2021; Di Palma et al., 2025 など）は representation–use distinction を理論的に指摘するか、単一属性での decodability を報告するに留まり、同一モデル・同一属性・同一評価指標上で accessibility、local causal leverage、direction-specific necessity の三者を定量的に対比した研究は限られている。本研究は、これら三つの性質を、全28層・3コンポーネントにわたる系統的な sweep として直接比較し、decodability 最大部位と causal recovery 最大部位が一致しないことを、単一の効果量対比として定量的に提示する。
+2. **生成過程を跨ぐ「時間的動員（Temporal Recruitment）」の実証:** ROME をはじめとする causal tracing 研究は主に Prompt 処理内での時間的・空間的局在を報告してきた一方、本研究は Prompt-time と Generation-time 直前という、自己回帰的生成プロセスを跨いだ二時点の比較を行い、同一部位・同一属性における因果的レバレッジの「時間的動員」（temporal recruitment）を報告する。特に Layer 15 MLP が両時点でほぼゼロの回復率を示す一方、Layer 24 Residual が生成時のみ大きな回復率（$53.24\%$）を示すという結果は、既存の early/late site 分離の知見を、単一時点の Prompt 処理内比較から生成過程全体をカバーする比較へと拡張するものである。
+3. **離散二次元分布に対する 2D Joint Optimal Transport の導入:** 本研究は recovery 指標として、単一トークンの確率や logit 差分ではなく、81候補からなる離散 Valence–Arousal 分布全体に対する Manhattan ground cost を用いた 2次元 Joint Optimal Transport を採用している。これは、activation patching のベストプラクティス研究が主に単変量の出力指標を前提としているのに対し、多次元的な属性空間における因果効果をより高解像度に評価する試みである。
+4. **Random Direction Null Control と FDR 補正による方向特異性の厳格検証:** probe-aligned direction ablation において、probe 方向の除去効果を probe-orthogonal random direction の empirical null distribution と比較し、Benjamini–Hochberg FDR 補正を適用した統計的検証は、線形表現仮説への反証研究や concept erasure 研究の知見を、感情関連属性という新たな対象に対して多重比較を制御した形で適用する試みである。
+5. **Cross-Family Partial Replication によるモデル依存性の同定:** cross-family partial replication（Qwen2.5-1.5B-Instruct から Llama-3.2-1B-Instruct への追試）により、観測された時間的・空間的局在パターンがモデル依存的であり、単一モデルでの結果を過度に一般化すべきでないことを明示的に示した点も、感情表現研究の多くが単一モデルまたは同一ファミリー内での分析に留まる中で、本研究が付加する頑健性検証の一側面である。
+
+総じて、本研究は既存の probing 限界の理論的指摘、activation patching の方法論、線形表現仮説への反証、感情表現の probing 研究という複数の系譜を統合し、それらが個別に論じてきた「decodability と因果的使用は異なる」という命題を、単一のモデル・単一の属性・複数の時点・複数の介入様式にわたって定量的に実証した点に新規性がある。
 
 ⸻
 
-3. Models and Data
+3. 操作的定義
 
-3.1 Models
+3.1 Linear Accessibility
 
-主要実験では、同一architectureを持つ以下のモデルペアを使用した。
+層 $\ell$、コンポーネント $c$ の活性化 $h_{\ell,c}$ から affective peak 対 neutral 条件を held-out data 上で線形予測する性能を、
+
+[
+D_{\ell,c}
+]
+
+とする。
+
+本研究では Ridge regression の held-out $R^2$ を用いる。
+
+$D_{\ell,c}$ が高いことは、その活性化に当該条件に関する線形アクセス可能な情報が存在することを意味する。
+
+これは当該部位が因果的ボトルネックであることを意味しない。
+
+3.2 Local Causal Leverage
+
+本研究における local causal leverage は、ある部位が情報の起源であることや、唯一の必要経路であることを意味しない。
+
+層 $\ell$、コンポーネント $c$、トークン位置 $t$ に対し、
+
+[
+do
+\left(
+h_{\ell,c,t}^{\mathrm{neutral}}
+\leftarrow
+h_{\ell,c,t}^{\mathrm{peak}}
+\right)
+]
+
+という matched substitution を行う。
+
+このとき、パッチ後の出力分布が neutral baseline から matched peak target へどの程度移動したかを local causal recovery と定義する。
+
+したがって、本研究でいう local causal leverage とは、
+
+tested matched-substitution intervention に対する下流出力分布の感受性
+
+である。
+
+局所回復が小さいことは、当該部位が大域的に非因果的であることを意味しない。分散表現、冗長経路、複数トークンにまたがる計算、非線形相互作用などの可能性は残る。
+
+3.3 Probe-Aligned Direction-Specific Necessity
+
+学習済み probe weight の単位方向を $\hat v_{\mathrm{probe}}$ とし、
+
+[
+h’
+
+h
+
+(h^\top \hat v_{\mathrm{probe}})
+\hat v_{\mathrm{probe}}
+]
+
+によってその1次元成分を除去する。
+
+この操作が出力を neutral target 方向へ選択的に移動させ、かつ probe-orthogonal random directions の除去より大きな効果を示す場合、その方向について局所的な direction-specific necessity が支持される。
+
+⸻
+
+4. モデルとデータ
+
+4.1 Models
+
+主解析には、
 
 * Qwen/Qwen2.5-1.5B
 * Qwen/Qwen2.5-1.5B-Instruct
 
-Qwen2.5-1.5Bは28 Transformer layersを持ち、本研究ではLayer 0からLayer 27までを解析する。
+を用いる。
 
-Base/Instruct comparisonはpost-trainingの一般的因果効果を推定するためではなく、同一architecture間でrepresentational transferを評価するstress testとして用いる。
+Qwen2.5-1.5B は28 Transformer layersを持ち、本研究では Layer 0–27 を解析する。
 
-3.2 AIPsy-Affect Strict Expanded
+中心となる within-model causal analysis は Instruct モデルを対象とする。
 
-主要な機構実験にはAIPsy-Affect Strict Expandedを使用する。
+Base/Instruct comparison は post-training の一般的因果効果を推定するためではなく、representational alignment と functional equivalence を区別する補助的 stress test として用いる。
+
+また、cross-family exploratory replication として Meta Llama-3.2-1B-Instruct を用いる。
+
+4.2 AIPsy-Affect Strict Expanded
+
+主要な機構実験には AIPsy-Affect Strict Expanded を用いる。
 
 データセットは、
 
@@ -162,92 +251,70 @@ Base/Instruct comparisonはpost-trainingの一般的因果効果を推定する�
 
 から構成される。
 
-各pair-id内では、可能な限り
+各 group は narrative structure、characters、tense、lexical complexity などを可能な限り保持したまま、affective intensity を変化させた matched stimuli からなる。
 
-* narrative structure,
-* characters,
-* tense,
-* lexical complexity,
+主条件は、
 
-を一致させつつ、affective intensityを変化させる。
-
-主要な条件は、
-
-* peak
-* moderate
-* neutral
+* Neutral
+* Moderate
+* Peak
 
 である。
 
-明示的なhappy, sad等の感情語彙への依存を抑えることで、probeが単純なkeyword detectionを学習する可能性を低減する。
+明示的な感情語彙への依存を抑えることで、単純な lexical cue detection が probe performance を支配する可能性を低減する。
 
-3.3 Strict Three-Way Group Split
+Data split
 
-同一pair由来の刺激がtrainingとevaluationへ同時に流入しないよう、pair_id単位で分割する。
+pair-id group 単位で以下のように分割する。
 
-* Train: 76 groups / 169 samples
-* Alignment-dev: 58 groups / 124 samples
-* Held-out test: 58 groups / 129 samples
+Split	Groups	Samples	Usage
+Train	76	169	Linear probe fitting
+Alignment-dev	58	124	Base→Instruct mapping / statistics
+Held-out test	58	129	Final probing / causal intervention
 
-Held-out test内には39組のcomplete peak-neutral pairsが存在する。
+Held-out test には39組の complete Peak–Neutral matched pairs が存在する。
 
-用途を明確に分離する。
+全84サイトを対象とする探索的全層スクリーニングでは、計算量制約から事前に固定した15組を使用する。
 
-Train splitはlinear probe fittingに用いる。
-
-Alignment-dev splitはBase→Instruct Ridge mappingおよびdistributional statisticsの推定に用いる。
-
-Held-out testは最終的なpredictive evaluationとcausal interventionにのみ使用する。
-
-なお、全層因果局所化スイープでは計算量削減のため、Held-out testに含まれる39組の完全一致ペアから事前に固定した15組のペア（a computationally constrained subset of 15 held-out matched pairs）を各layerの因果介入評価に用いた。一方、probe evaluationはtrain/test split全体を使用する。
-
-3.4 EmoBank
-
-外部human annotationとの対応評価にはEmoBankを用いる。
-
-Reader-perspective Valence/Arousal annotationsを使用し、元の尺度を必要に応じて1–9へ線形変換する。
+代表層の効果量推定には39組すべてを使用する。
 
 ⸻
 
-4. Constrained Sequence-Likelihood Measurement
+5. 制約付きSequence-Likelihood Evaluation
 
-4.1 Candidate construction
+5.1 Candidate space
 
-各入力(x)について、
+Valence $v$ および Arousal $a$ を、
 
 [
-V,A \in {1,\dots,9}
+v,a\in{1,\ldots,9}
 ]
 
-とし、全81通りの候補
+とし、全81候補
 
 [
 y_{v,a}
+
+\texttt{{“valence”: v, “arousal”: a}}
 ]
 
-を生成する。
+を構成する。
 
-候補形式は、
+5.2 Conditional sequence likelihood
 
-{"valence": v, "arousal": a}
-
-で統一する。
-
-4.2 Raw sequence log likelihood
-
-候補列のスコアを、
+入力 $x$ に対する候補のスコアは、
 
 [
-s_{v,a}^{\mathrm{raw}}
+s_{v,a}
 
 \sum_{t=1}^{|y_{v,a}|}
 \log
 P(y_{v,a,t}\mid x,y_{v,a,<t})
 ]
 
-として定義する。
+とする。
 
-81候補上でSoftmaxを適用し、
+候補集合上で、
 
 [
 P(v,a\mid x)
@@ -256,54 +323,131 @@ P(v,a\mid x)
 {\sum_{v’,a’}\exp(s_{v’,a’})}
 ]
 
-を得る。
+を計算する。
 
-4.3 Length-normalized likelihood
-
-候補token長の違いによるlength biasを評価するため、
+長さによる影響を確認するため、
 
 [
 s_{v,a}^{\mathrm{norm}}
 
-\frac{1}{|y_{v,a}|}
-s_{v,a}^{\mathrm{raw}}
+\frac{s_{v,a}}{|y_{v,a}|}
 ]
 
-についても全解析を実施する。
+を用いる robustness analysis も実施する。
 
-これにより、本研究の主要結論がscoring conventionに依存するかを確認する。
-
-4.4 Expected VA
-
-出力分布から、
+期待値は、
 
 [
 E[V\mid x]
 
-\sum_{v,a}
-vP(v,a\mid x)
+\sum_{v,a}vP(v,a\mid x)
 ]
 
 [
 E[A\mid x]
 
-\sum_{v,a}
-aP(v,a\mid x)
+\sum_{v,a}aP(v,a\mid x)
 ]
 
-を算出する。
+として計算する。
 
 ⸻
 
-5. Experiment 1: Greedy Collapse and Distributional Sensitivity
+6. Joint Optimal Transport による因果回復率
 
-5.1目的
+81候補を $9\times9$ の VA grid とみなす。
 
-Instructモデルのgreedy reportが中立値へ集中する場合でも、候補列全体のrelative likelihood structureに刺激情報が残っているか検証する。
+二つの分布 $P,Q$ に対し、
 
-5.2 Results
+[
+\mathrm{OT}_{VA}(P,Q)
 
-Instructモデルでは、greedy first-person reportの98.6%が
+\min_{\gamma\in\Pi(P,Q)}
+\sum_{i,j}
+\gamma_{ij}c(i,j)
+]
+
+を計算する。
+
+Ground cost は、
+
+[
+c((v,a),(v’,a’))
+
+|v-v’|
++
+|a-a’|
+]
+
+という Manhattan distance とする。
+
+したがって、本稿ではこれを 2D Joint Optimal Transport cost または Joint OT distance with Manhattan ground cost と呼ぶ。
+
+Matched Peak–Neutral pair に対する回復率を、
+
+[
+R
+
+1-
+\frac{
+\mathrm{OT}_{VA}
+(P_{\mathrm{patch}},P_{\mathrm{peak}})
+}{
+\mathrm{OT}_{VA}
+(P_{\mathrm{neutral}},P_{\mathrm{peak}})
+}
+]
+
+と定義する。
+
+$R>0$ は patched distribution が Peak target へ近づいたことを意味し、$R=0$ は改善なし、$R<0$ は Peak target からさらに離れたことを意味する。
+
+負の回復率は、それ自体から inhibitory mechanism を意味しない。Off-manifold perturbation や context incompatibility も原因となり得る。
+
+不安定な比率を防ぐため、
+
+[
+\mathrm{OT}_{VA}
+(P_{\mathrm{neutral}},P_{\mathrm{peak}})
+<
+0.05
+]
+
+のペアは recovery analysis から除外する。
+
+⸻
+
+7. Statistical Analysis
+
+全層スクリーニングは localization を目的とする exploratory analysis とし、代表層39-pair evaluation を効果量の安定性評価として扱う。
+
+平均 recovery の95%信頼区間は matched pair を resampling unit とする non-parametric bootstrap により算出する。
+
+主たる peak-site contrast は各ペア内で、
+
+[
+\Delta G_i
+
+G_{i,\mathrm{L24,Resid}}
+
+G_{i,\mathrm{L15,MLP}}
+]
+
+を計算し、その平均差およびbootstrap confidence intervalを報告する。
+
+Layerwise association には Spearman rank correlation を用いる。
+
+Probe-aligned necessity に関する多重比較には Benjamini–Hochberg FDR correction を適用する。
+
+統計的非有意性は効果の不存在の証明とは解釈せず、effect size と confidence interval を併記する。
+
+⸻
+
+8. Results
+
+8.1 Greedy Collapse Does Not Imply Distributional Invariance
+
+Qwen2.5-1.5B-Instruct の greedy first-person report は98.6%の試行で、
 
 [
 (V,A)=(5,5)
@@ -311,876 +455,802 @@ Instructモデルでは、greedy first-person reportの98.6%が
 
 に集中した。
 
-一方、sequence-likelihood distributionから計算されるexpected ValenceはEmoBank reader Valenceと有意に共変動した。
+しかし、81候補の likelihood distribution から得られる expected Valence は刺激間で変化した。
 
-Metric	Base	Instruct
-Greedy (5,5) rate	12.4%	98.6%
-Pearson (r), human Valence	0.365	0.629
-Spearman (\rho)	0.341	0.618
-(E[V]) 5–95 percentile	3.82–7.14	5.12–5.78
-
-Instructではdynamic rangeが縮小しているものの、刺激間の順位構造は保持される。
-
-したがって、
+EmoBank reader Valence との相関は、
 
 [
-\mathrm{Greedy\ Collapse}
-\not\Rightarrow
-\mathrm{Distributional\ Invariance}.
-]
-
-これはモデルにlatent subjective emotionが存在することを示すものではない。
-
-示されているのは、固定candidate set上のconditional likelihood distributionがstimulus dependentであるという事実である。
-
-⸻
-
-6. Experiment 2: Layerwise Linear Decodability
-
-6.1 Probe target
-
-Full-layer sweepでは、各刺激を
-
-[
-y=
-\begin{cases}
-1 & \text{peak}\
-0 & \text{neutral}
-\end{cases}
-]
-
-としてRidge regression probeを学習する。
-
-したがって本実験の(R^2)はcontinuous Valenceそのものではなく、affective peak-versus-neutral condition indicatorのheld-out predictabilityを表す。
-
-6.2 Representation extraction
-
-各layerについて、
-
-* MLP output
-* projected Attention output
-* full layer output / residual stream
-
-の3種類を解析する。
-
-位置はprompt最終tokenである。
-
-各textについて標準化promptをtokenizeし、
-
-[
-h_{\ell}^{\mathrm{MLP}}(x),
-\quad
-h_{\ell}^{\mathrm{attn}}(x),
-\quad
-h_{\ell}^{\mathrm{resid}}(x)
-]
-
-を取得する。
-
-6.3 Probe fitting
-
-Ridge regressionをTrain splitでfitし、Held-out testで(R^2)を計算する。
-
-6.4 Results
-
-Decodabilityはdepthに応じて系統的に変化した。
-
-正本評価（本研究の主解析）における各コンポーネントの最大デコード値は以下の通りであった：
-* MLP output: Layer 15において最大値 (R^2_{\mathrm{MLP},15} = 0.5610)
-* Attention output: Layer 18において最大値 (R^2_{\mathrm{ATTN},18} = 0.5495)
-* Residual stream: Layer 14において最大値 (R^2_{\mathrm{RESID},14} = 0.5016)
-
-なお、先行する予備的な全層スイープ実装（初期の尤度ロバストネス評価パイプラインと同時に抽出・推定されたプローブ評価）においても、MLP Layer 15において (R^2 = 0.546) と極めて近い値を示した。*Both analyses yielded the same qualitative layerwise profile and similar effect magnitude, with peak MLP decodability occurring at Layer 15.*（いずれの解析でも層別プロファイルは定性的に一致し、MLP解読能のピークはLayer 15に位置した。効果量も近い範囲にあった）。
-
-初期層ではおおむね0.30–0.40、中盤層では0.45–0.56、終盤residualでは0.15–0.25程度まで低下した。
-
-この結果は、affective conditionが中盤層から特に強くlinearly accessibleであることを示す。
-
-ただし、
-
-[
-\mathrm{High\ Probe\ Accuracy}
-]
-
-は、
-
-[
-\mathrm{High\ Causal\ Control}
-]
-
-を意味しない。
-
-この区別を次の実験で直接評価する。
-
-⸻
-
-7. Experiment 3: Cross-Model Representation Alignment
-
-7.1 Motivation
-
-BaseとInstructのhidden representationsが同じaffective informationを異なる座標系で表現している可能性を検討する。
-
-7.2 Alignment
-
-Alignment-dev split上でBase activationからInstruct activationへのRidge mappingを学習する。
-
-[
-\hat h_I
-
-Wh_B+b.
-]
-
-Direct transfer、orthogonal alignment、Ridge mappingを比較する。
-
-7.3 Alignment metrics
-
-単一のprobe scoreだけでなく、高次元表現全体を評価するため、
-
-* activation-wise (R^2)
-* Linear CKA
-* paired retrieval top-1 accuracy
-* cosine similarity
-* Mahalanobis distance
-* two-sample classification AUC
-
-を使用する。
-
-7.4 Results
-
-Layer 15 MLPのRidge alignmentでは、正則化条件に応じて最大で、
-
-[
-R^2_{\mathrm{activation}}
-\approx0.50
-]
-
-を得た。
-
-弱正則化領域では、
-
-[
-\mathrm{CKA}=0.829
-]
-
-[
-\mathrm{Pair\ Retrieval\ Top1}=86.6%
-]
-
-に達した。
-
-これはBase representationsから対応するInstruct representationsを高い精度で識別・予測可能であることを示す。
-
-一方で、これらのpredictive metricsだけでは、aligned representationが自然なInstruct activationとして統計的に典型的かは判断できない。
-
-⸻
-
-8. Experiment 4: Ridge Regularization Sweep and Center Collapse
-
-8.1 Design
-
-Ridge正則化係数を、
-
-[
-\alpha
-\in
-{10^{-5},10^{-4},10^{-3},10^{-2},10^{-1},1,10,10^2,10^3,10^4}
-]
-
-でスイープする。
-
-8.2 Results
-
-(\alpha)	Activation (R^2)	CKA	Top-1	Median (D_M)	AUC
-(10^{-5})	.457	.826	86.6%	9.78	.623
-(10^{-4})	.457	.826	86.6%	9.78	.621
-(10^{-3})	.457	.826	86.6%	9.76	.624
-(10^{-2})	.461	.826	86.6%	9.56	.621
-(10^{-1})	.481	.829	86.6%	8.30	.616
-(1)	.496	.824	75.6%	4.99	.636
-(10)	.396	.783	36.6%	2.18	.713
-(10^2)	.172	.670	2.4%	.68	.762
-(10^3)	.010	.577	1.2%	.16	.796
-(10^4)	-.025	.562	1.2%	.12	.792
-
-自然なInstruct activationのMahalanobis radius中央値は、
-
-[
-D_M^{\mathrm{natural}}
-
-39.63
+r=0.629,
+\qquad
+\rho=0.618
 ]
 
 であった。
 
-Hidden dimensionが(d=1536)であるため、
-
-[
-\sqrt{d}\approx39.19
-]
-
-という高次元Gaussianの典型距離と近い。
-
-一方、aligned representationは最弱正則化でも(D_M\approx9.8)にしか達しない。
-
-正則化を強めると、
-
-[
-9.78
-\rightarrow
-8.30
-\rightarrow
-4.99
-\rightarrow
-2.18
-\rightarrow
-0.12
-]
-
-と分布中心へ収縮する。
-
-この結果は、
-
-[
-\mathrm{Predictive\ Similarity}
-\not\Rightarrow
-\mathrm{Distributional\ Typicality}
-]
-
-を示す。
-
-特に、CKA≈0.83やretrieval≈86.6%という高い値が得られていても、aligned representationsは自然Instruct distributionと同じ半径構造を持たない。
-
-⸻
-
-9. Experiment 5: Cross-Model Activation Patching
-
-9.1 Conditions
-
-Cross-model causal transferを検証するため、以下を比較する。
-
-1. Target baseline
-    Neutral contextをInstructモデルへ入力。
-2. Within-model patch
-    Peak Instruct activationをNeutral Instruct runへpatch。
-3. Raw cross-model patch
-    Base Peak activationを直接Instructへpatch。
-4. Aligned cross-model patch
-    Base Peak activationをRidge mappingした後、Instructへpatch。
-
-主要実装ではLayer 15 MLPを使用する。
-
-9.2 Interpretation
-
-Aligned patchingによってBase/Instruct間の座標差を部分的に補正しても、下流reportの回復は小さい。
-
-ただし、Ridge alignment自体がnatural target manifoldを完全には再現しないため、
-
-cross-model patchingが効かない
-
-ことだけから、
-
-post-trainingがcausal couplingを破壊した
-
-とは結論しない。
-
-Cross-model experimentは、本研究では主としてpredictive alignmentとfunctional equivalenceが異なることを示すstress testとして位置付ける。
-
-⸻
-
-10. Experiment 6: Multi-Layer Simultaneous Patching
-
-10.1 Motivation
-
-Single-layer patchingが効かない理由が、単に一つのlayerだけを交換しているためである可能性を検証する。
-
-10.2 Intervention blocks
-
-以下の4種類を使用する。
-
-* 1 Layer: L15
-* 2 Layers: L14–15
-* 4 Layers: L13–16
-* 8 Layers: L11–18
-
-各blockについて、
-
-* within-model patch
-* raw cross-model patch
-* aligned cross-model patch
-
-を比較する。
-
-10.3 Results
-
-Normalized 2D EMD recoveryは以下となった。
-
-Block	Aligned mean	Median	95% CI	Raw	Within
-L15	0.11%	0.11%	[-0.05, 0.28]	0.20%	0.23%
-L14–15	0.07%	0.03%	[-0.18, 0.34]	-1.26%	0.15%
-L13–16	0.35%	0.38%	[0.04, 0.64]	0.09%	0.34%
-L11–18	-0.33%	-0.20%	[-1.00, 0.29]	-3.81%	-0.12%
-
-Layer数を1から8へ増加しても、Base-like report distributionへの単調な回復は観測されなかった。
-
-したがって、少なくとも検証した連続mid-layer MLP blockを一括置換するだけでは、report distributionを再現できない。
-
-これはdistributed computationと整合するが、distributed mechanismを直接証明するものではない。
-
-⸻
-
-11. Experiment 7: Within-Model Substitution Controls
-
-11.1 Motivation
-
-Cross-model patchingのnull resultを解釈する前に、
-
-そもそも同一モデル内で、そのactivation sliceを置換すればreportが動くか
-
-を検証する。
-
-11.2 Protocols
-
-Held-out test内のcomplete Peak–Neutral 39 pairsを用いる。
-
-以下を比較する。
-
-1. mlp_last_token_L15
-2. resid_last_token_L15
-3. multi_resid_last_L13_16
-4. resid_all_tokens_L15
-5. multi_resid_all_L13_16
-
-11.3 Results
-
-局所的なlast-token substitutionでは回復は小さい。
-
-Protocol	Raw mean/median Rec	Norm mean/median Rec
-L15 MLP last-token	0.82 / 0.56%	1.30 / 1.13%
-L15 Resid last-token	0.38 / 0.36%	0.42 / 0.15%
-L13–16 Resid last-token	1.47 / 1.06%	1.38 / 0.89%
-
-一方、all-token replacementでは非常に大きな負のrecoveryを示した。
-
-Protocol	Raw Rec	Norm Rec
-L15 Resid all-token	-448.95%	-225.88%
-L13–16 Resid all-token	-437.15%	-236.91%
-
-これは異なる文脈から得たsequence-wide activationを無理に置換することで、target computationを大きく破壊することを示す。
-
-したがって、本研究ではlast-token interventionを主要なlocal causal testとして扱う。
-
-⸻
-
-12. Experiment 8: Exploratory Full-Layer Causal Localization Screen (True 2D Joint OT & Attention Output)
-
-12.1 Motivation
-
-Layer 15がたまたま不適切だった可能性、および因果的ボトルネックがMLPではなくMulti-Head Self-Attention経路に存在する可能性を排除するため、全28層のMLP output、Attention output、Residual streamを系統的に調査する。
-
-さらに、先行実験におけるValence/Arousal独立周辺分布の和（Marginal Wasserstein和）がVA結合依存性を無視する擬似指標であった点を改め、81×81のManhattan ground costに基づく真の2D Joint Optimal Transport（Joint OT; Earth Mover's Distance）を主評価指標として全層再測定を行った。
-
-12.2 Design
-
-各layer (\ell)および各component（MLP output, Attention output, Residual stream）について、
-
-[
-D_\ell = \text{held-out probe }R^2
-]
-
-と、真の2D Joint Optimal Transportに基づく局所因果回復率
-
-[
-C_\ell^{\mathrm{Joint}} = 1 - \frac{\mathrm{OT}_{VA}(P_{\mathrm{patch}}, P_{\mathrm{peak}})}{\mathrm{OT}_{VA}(P_{\mathrm{neut}}, P_{\mathrm{peak}})}
-]
-
-を測定する。評価ペアの分母が過小な場合（(\mathrm{OT}_{VA}(P_{\mathrm{neut}}, P_{\mathrm{peak}}) < 0.05)）は回復率計算から除外するセーフガードを適用し、Held-out testのcomplete Peak–Neutral pairs（各層15 pairs）を評価した。介入位置はprompt最終tokenであり、Attention介入は当該トークン位置でのprojected attention-module outputの置換として厳密に定義される。
-
-12.3 Main Results
-
-真の2D Joint OTによる全層・全コンポーネント測定結果の要約は以下の通りである。
-
-Component	Max Probe (R^2) (Layer)	Max Joint OT Rec (Layer)	Spearman (\rho)	p-value
-MLP	0.5610 (L15)	2.20% (L10)	0.2956	0.1268
-ATTN	0.5495 (L18)	1.48% (L20)	0.0230	0.9076
-RESID	0.5016 (L14)	1.68% (L16)	-0.0394	0.8422
-
-主要な知見は以下の通りである。
-
-1. **Attention経路における因果回復の欠如**:
-   Attention outputにおける局所回復率も最大1.48%（Layer 20）に留まり、MLP（最大2.20%）やResidual（最大1.68%）と同様に極小であった。したがって、We found no evidence that a single-layer projected attention output at the tested token position acts as a strong local causal bottleneck.（本実験で検証した特定トークン位置における単一層の射影済みAttention出力が、強力な局所的因果ボトルネックとして機能する証拠は見出されなかった。ただし、これは複数層にわたるAttention回路、個別のAttention Head、あるいはKVキャッシュを介した系列全体の伝播経路を否定するものではない）。
-2. **最高デコード層での回復率の極小性**:
-   MLPデコーダビリティが最大となるLayer 15（(R^2 = 0.5610)）におけるJoint OT回復率はわずか1.00%（中央値0.72%）であった。同様にAttentionデコーダビリティが最大となるLayer 18（(R^2 = 0.5495)）での回復率は0.04%（中央値0.14%）であった。
-3. **Decodability–Causal Recoveryの無相関**:
-   層別probe (R^2)とJoint OT回復率の間には、いずれのコンポーネントにおいても統計的に有意な単調関係は検出されなかった（MLP: (\rho = 0.2956, p = 0.1268), 95% Bootstrap CI: ([-0.08, 0.61]); ATTN: (\rho = 0.0230, p = 0.9076), 95% Bootstrap CI: ([-0.35, 0.40]); RESID: (\rho = -0.0394, p = 0.8422), 95% Bootstrap CI: ([-0.41, 0.35])）。なお、28層という標本サイズ制約から (p > 0.05) は厳密な「無相関の証明」を意味するものではなく、特にMLPでは正相関の可能性が区間内に含まれる一方、いずれのコンポーネントにおいても強い単調予測関係は支持されなかった。
-
-*プローブ推定値の整合性に関する注記*:
-本研究の主解析では、全28層・全コンポーネントで統一的に算出した (R^2_{\mathrm{MLP},15} = 0.5610)、(R^2_{\mathrm{ATTN},18} = 0.5495)、(R^2_{\mathrm{RESID},14} = 0.5016) を正本として採用している。なお、Section 6で言及した予備的な全層スイープ実装（初期の尤度ロバストネス評価パイプラインと同時に抽出されたプローブ推定: 0.546）と比較しても、*Both analyses yielded the same qualitative layerwise profile and similar effect magnitude, with peak MLP decodability occurring at Layer 15.*（いずれの解析によっても定性的な層別プロファイルと効果の大きさは極めて類似しており、Layer 15にピークが存在するという結論は共通している）。
-
-12.4 Marginal Wasserstein vs. Joint OT Robustness
-
-副指標として計算されたMarginal Wasserstein和回復率においても、MLP最大2.33%（L4）、ATTN最大1.16%（L1）、RESID最大1.57%（L14）と一貫して極小であり、本研究で検証した2種類の距離定義（真の2D Joint OTおよびMarginal Wasserstein和）において、局所的単一層置換が下流報告を回復しないという定性的結論は極めて頑健である。
-
-12.5 Interpretation
-
-以上の結果は、プロンプト最終トークンにおける局所的内部表現について、MLP・Attention・Residualのいずれの計算経路においても、本実験で検証した局所介入族では強い因果的影響力を示す証拠は得られなかった（no evidence for strong local causal recovery under matched substitution within the tested intervention family）ことを全層にわたり示すものである。
-
-なお、重要点として、*The full-layer sweep was designed as an exploratory localization screen rather than a precise effect-size estimation procedure. Candidate and representative layers were subsequently reevaluated on the complete held-out matched-pair cohort in Section 15.5.*（本全層スイープは、精密な母集団効果量の推定手続きというよりは探索的な局所化スクリーニングとして設計されたものである。スクリーニングで示唆された候補層および代表層については、Section 15.5においてHeld-out全数コホートによる評価が実施された。この全数評価により、スクリーニングにおける探索的最大値であったLayer 10 MLP（2.20%）が全数評価では低下し（0.42%）、プローブ最高層Layer 15 MLPにおける回復率の極小性（0.51%）が一段と明確に裏付けられた）。
-
-⸻
-
-13. Experiment 9: Dual-Outcome Behavioral Readout
-
-13.1 Motivation
-
-First-person VA reportに対する局所causal effectが小さいことが、
-
-affect-related activationがすべてのdownstream taskで機能しない
-
-ことを意味するか検証する。
-
-13.2 Two outcomes
-
-各contextについて二種類のoutcomeを計算する。
-
-第一はfirst-person self-report:
-
-[
-E[V].
-]
-
-第二はsupportive responseとneutral responseのlog-likelihood ratio:
-
-[
-B(x)
-
-\log P(y_{\mathrm{support}}\mid x)
-
-\log P(y_{\mathrm{neutral}}\mid x).
-]
-
-Layer 15 MLP patch前後で両者を評価する。
-
-13.3 Current observation
-
-保存済み結果では、複数刺激についてintervention前後で(E[V])に小さな変動が見られる一方、記録されたbehavioral log-likelihood ratioは同一値となるケースが多い。
-
-この実験は、局所L15 MLP activationがself-reportだけでなくsupportive-vs-neutral response preferenceに対しても大きなlocal leverageを示さない可能性を示す。
-
-ただし、本結果は本稿の主証拠ではなくexploratory analysisとして扱う。
-
-⸻
-
-14. Experiment 10: Mood-Congruency / Third-Person Recognition Steering
-
-14.1 Motivation
-
-Matched activation substitutionがfirst-person reportをほとんど動かさない一方で、affect-associated directionへの明示的steeringは別taskへ因果的影響を与えられるかを調べる。
-
-14.2 Dataset
-
-EmoBankからValenceが中立近傍に位置する曖昧刺激107件を抽出する。
-
-14.3 Intervention
-
-Layers 14, 16, 20に対し、
-
-* valence direction
-* norm-matched random direction
-
-を注入する。
-
-Strengthは、
-
-[
-\alpha
-\in
-{-3,-1.5,0,+1.5,+3}
-]
-
-standard deviationsとする。
-
-総観測数は3210。
-
-14.4 Results
-
-Layer	Direction	(\beta_{\mathrm{mood}})	SE	p
-14	Valence	-0.0323	.0016	(1.18\times10^{-70})
-14	Random	-0.0042	.0013	(9.63\times10^{-4})
-16	Valence	-0.0169	.0012	(6.20\times10^{-40})
-16	Random	+0.0444	.0013	(6.40\times10^{-138})
-20	Valence	+0.0244	.0013	(3.23\times10^{-61})
-20	Random	+0.0091	.0009	(1.45\times10^{-23})
-
-Layer 14ではnegative slope、Layer 20ではpositive slopeが観測された。
-
-ただしLayer 16ではrandom directionの効果がvalence directionより大きく、activation perturbationに対するgeneric sensitivityの可能性がある。
+一方、Instructモデルでは expected Valence の dynamic range は Base より強く圧縮された。
 
 したがって、
 
-pure mood-congruency circuitを同定した
-
-とは結論しない。
-
-より限定的には、
-
-affect-associated steering can exert layer-dependent causal effects on a separate third-person recognition task, but direction specificity is not uniform across layers
-
-と解釈する。
-
-この結果は、first-person reportに対するlocal substitution effectが小さいことを、affect-related representationsが一般にcausally inertであることと混同してはならないことを示す。
-
-⸻
-
-15. Experiment 11: Generation-Time Causal Patching Sweep
-
-15.1 Motivation
-
-査読上の重大な反論として、「プロンプト最終トークン（Prompt-time）での介入では、その後の自己報告生成過程における文脈依存の計算を更新できないのではないか。自己報告プレフィックス `{"valence": ` が出力され、モデルが具体的な感情価トークンを生成する直前（Generation-time）のトークン位置で介入すべきである」という指摘が想定される。
-
-この仮説を検証するため、生成時トークン位置における全28層の因果パッチングスイープを実施した。
-
-15.2 Design
-
-プロンプトに対し、自己報告の開始プレフィックス（`{"valence": `）を付与した系列を入力とし、当該プレフィックスの最終トークン位置において、Peak条件の内部活性化（MLP output, Attention output, Residual stream）をNeutral条件の実行コンテキストへ置換した。
-
-介入効果は、真の2D Joint Optimal Transportに基づくPeak方向への回復率（True Joint OT Recovery）
-
 [
-G_\ell = 1 - \frac{\mathrm{OT}_{VA}(P_{\mathrm{patch}}, P_{\mathrm{peak}})}{\mathrm{OT}_{VA}(P_{\mathrm{neut}}, P_{\mathrm{peak}})}
-]
-
-として測定した。微小分母（(\mathrm{OT}_{VA}(P_{\mathrm{neut}}, P_{\mathrm{peak}}) < 0.05)）に対するセーフガードを適用し、有効ペアについて評価した（15 pairs were evaluated, of which 13 satisfied the recovery-denominator criterion; For each layer-component condition, recovery was computed across valid matched pairs; the median across those pairs was 0.00%）。
-
-15.3 Results
-
-全28層×3コンポーネント（MLP, ATTN, RESID）における生成時因果パッチングスクリーニング（`v3/results/generation_time_causal_sweep.csv`）の結果は以下の通りである。
-
-* **初期・中盤層（Layer 0〜14）における極小な局所回復**:
-  Layer 0〜14では、MLP, Attention, Residual streamのいずれにおいても回復率は -2%〜+2.5% 前後（中央値 -0.7%〜+2.5%）で推移し、出力自己報告に対する有意な局所因果レバレッジは認められなかった。
-* **プローブ最高層（Layer 15）における局所回復の欠如**:
-  プロンプト時リニアプローブデコーダビリティが最大であったLayer 15（$R^2 = 0.5610$）における生成時回復率は、MLPで -1.99%（中央値 -0.84%）、Attentionで 6.11%（中央値 5.49%）、Residualで 7.30%（中央値 5.66%）に留まった。
-* **後段Residual streamにおける強烈な因果レバレッジの急浮上（Layer 16〜27）**:
-  Layer 16 Residualにおいて 27.72%（中央値 32.14%）へと急浮上した後、Layer 18から27に至る後段Residual stream全体において **40.01%〜50.26%（中央値 46.34%〜56.05%）** という極めて強力な因果回復が連続して観測された（Layer 18: 40.01%, Layer 20: 46.31%, Layer 24: 47.74%, Layer 27: 50.26%）。
-* **後段MLPおよびAttentionの挙動**:
-  後段MLPの一部（Layer 21: 33.19%、Layer 24: 20.79%）でも中程度の回復が認められたが、Attention出力は後段層においても大半が負値〜1%未満（Layer 18: -9.70%、Layer 20: -2.85%、Layer 24: 0.94%）に留まり、生成時においても強力な局所ボトルネックとしては機能しなかった。
-
-15.4 Stage 1: Exploratory Full-Layer Screen (N=15)
-
-全28層を網羅した初期の生成時パッチングスクリーニング（N=15 pairs; 有効13 pairs）において、中盤層（Layer 15 MLP: -1.99%）における局所因果回復の欠如と、**Layer 18〜27の後段Residual streamにおける急激な因果レバレッジの出現（40.01%〜50.26%、中央値 46.34%〜56.05%）**という時空間的局所化プロファイルが同定された。
-
-このスクリーニング結果は、「プロンプト時には因果レバレッジがほとんど検出されないが、生成直前の文脈では後段Residual streamにおいて強力な因果回復が出現する」という動的移行を示唆する重要な探索的手がかりを提供した。しかしながら、初期スクリーニングは15組という計算コスト制約下の探索的サブセットに基づいており、標本サイズに伴う推定の分散を低減し母集団効果量を確定するため、代表層についてHeld-out 39 pairs全数コホート評価（Stage 2）を実施した。
-
-15.5 Stage 2: Focused Full-Cohort Evaluation on Representative Layers
-
-初期全層スクリーニングの標本サイズ制約を解消するため、Held-out testに含まれる全39組の完全一致ペアを評価対象とし、初期スクリーニングで得られた候補層に加え、probe peakおよびcomponent-specific representative layersを含む代表6層（Layer 10, 14, 15, 18, 20, 24）におけるPrompt-timeおよびGeneration-timeの真の2D Joint OT因果回復率を測定した（`v3/results/focused_causal_sweep_39pairs.csv`）。分母セーフガード（$\epsilon_{\mathrm{rec}} = 0.05$）適用後、Prompt-timeでは32 pairs、Generation-timeでは全39 pairsが回復率解析に有効であった。
-
-なお、方法論的透明性として、*Representative layers included probe-defined layers and layers prioritized from the exploratory screen; accordingly, the full-cohort analysis is intended to stabilize effect-size estimates rather than provide selection-independent confirmatory inference.*（代表層にはプローブによって事前に定義された層に加え、Stage 1の探索結果から選択された候補層も含まれるため、本全数評価は選択独立な確認的仮説検定ではなく、探索的に同定された効果の安定性と効果量を全Held-outコホート上で再評価することを目的とする）。
-
-**表: 代表6層における全数コホート評価（全39組評価; Prompt有効32ペア, Generation有効39ペア）**
-
-| Layer | Comp | Prompt Mean (Med) | Gen Mean (Med) | Gen 95% CI | Gen IQR [Q25, Q75] | Gen Positive Fraction | 解釈・メカニズム |
-|---|---|---|---|---|---|---|---|
-| **L10** | MLP | +0.42% (+0.43%) | +0.18% (+0.80%) | [-2.0%, +2.5%] | [-4.65%, +4.09%] | 53.8% | Prompt最大層でも全数評価では回復率消失（~0%） |
-| **L10** | ATTN | +0.68% (+0.11%) | +0.91% (+0.94%) | [-1.1%, +3.3%] | [-2.26%, +3.49%] | 56.4% | 初期層AttentionはPrompt/Genともに不活性 |
-| **L10** | RESID| +0.54% (+0.13%) | -1.42% (+0.15%) | [-5.2%, +1.6%] | [-3.84%, +3.29%] | 51.3% | 初期Residual介入は負値〜微小 |
-| **L14** | MLP | +0.91% (+1.00%) | -1.55% (-1.05%) | [-3.5%, +0.2%] | [-4.31%, +2.22%] | 46.2% | 中盤MLPは生成時でも負値 |
-| **L14** | ATTN | +0.15% (+0.28%) | -0.39% (+0.21%) | [-3.6%, +2.7%] | [-1.99%, +3.24%] | 51.3% | Attentionは一貫して因果的に不十分 |
-| **L14** | RESID| +1.38% (+1.07%) | +0.52% (+2.06%) | [-3.9%, +4.4%] | [-3.64%, +5.66%] | 61.5% | Residデコード最高層でも局所回復は極小（<1%） |
-| **L15** | **MLP** | **+0.51% (+0.47%)** | **-0.06% (+0.50%)** | **[-2.0%, +1.8%]** | [-2.89%, +3.04%] | 53.8% | **プローブ最高層（R^2=0.561）における局所回復の欠如** |
-| **L15** | ATTN | -1.14% (-0.61%) | +3.46% (+5.32%) | [-0.5%, +7.2%] | [-1.70%, +12.66%] | 69.2% | Attentionの微小回復 |
-| **L15** | RESID| +0.24% (+0.34%) | +7.40% (+9.70%) | [+2.7%, +12.0%] | [-1.43%, +16.36%] | 74.4% | 中盤Residualで生成時回復が胎動 |
-| **L18** | MLP | +1.25% (+0.60%) | +8.03% (+7.72%) | [+4.8%, +11.5%] | [+2.52%, +15.68%] | 87.2% | 後段MLPで正の回復率が拡大 |
-| **L18** | ATTN | +0.44% (+0.68%) | -6.82% (-6.87%) | [-11.2%, -2.6%] | [-12.98%, +1.10%] | 30.8% | **Attentionデコード最高層でも生成時回復率は負（破綻）** |
-| **L18** | **RESID**| +0.63% (+0.28%) | **+42.12% (+49.31%)**| **[+35.1%, +48.7%]** | [+34.02%, +56.14%] | 94.9% | **Stage 1 (40.01%) と整合する強い因果回復** |
-| **L20** | MLP | -0.42% (-0.44%) | +10.54% (+14.23%)| [+4.6%, +15.6%] | [+3.64%, +21.04%] | 82.1% | 後段MLPで約10%の回復が観測された |
-| **L20** | ATTN | +0.67% (+0.18%) | +1.32% (+0.30%) | [-3.6%, +6.6%] | [-6.25%, +6.94%] | 51.3% | Attentionは後段でも約1%にとどまる |
-| **L20** | **RESID**| +1.01% (+0.26%) | **+50.22% (+60.16%)**| **[+42.6%, +57.5%]** | [+32.47%, +66.31%] | 97.4% | **Stage 1 (46.31%) と整合、正比率97.4%に到達** |
-| **L24** | **MLP** | -0.32% (-0.47%) | **+15.04% (+17.87%)**| **[+10.5%, +19.5%]** | [+5.99%, +25.96%] | 87.2% | **後段MLP単独で平均15.04%（中央値17.87%）の正の因果回復** |
-| **L24** | ATTN | +0.34% (+0.09%) | +0.00% (+0.60%) | [-1.2%, +1.2%] | [-0.89%, +2.46%] | 56.4% | 終盤Attentionも非ボトルネック（~0%） |
-| **L24** | **RESID**| -0.26% (-0.19%) | **+53.24% (+61.57%)**| **[+45.7%, +60.5%]** | [+40.22%, +71.24%] | 94.9% | **Stage 1 (47.74%) を再現、自己報告直前で平均53.2%回復** |
-
-この全数コホート評価から、以下の明確な結論が導かれる：
-
-1. **Stage 1とStage 2の一貫性と再現性 (Consistency Across Cohorts)**:
-   Stage 1の15ペアスクリーニングで検出された後段Residual streamの急峻な因果レバレッジ出現は、Stage 2の39ペア全数コホート評価において極めて高い精度で再現された（L18: 40.01% $\rightarrow$ 42.12%, L20: 46.31% $\rightarrow$ 50.22%, L24: 47.74% $\rightarrow$ 53.24%）。この一貫性は、観察された因果レバレッジの局在化が、少数の外れ値や15-pair subset特有の標本変動だけでは説明しにくいことを示している。
-2. **Prompt-Time Local Causal Recoveryの極小性 (Low Prompt-Time Recovery under Matched Substitution)**:
-   プローブ解読能がピークに達する Layer 15 MLP（$R^2 = 0.5610$）の Prompt-time 回復率は、有効32 pairs平均で **わずか 0.51%（中央値 0.47%）** であり、検証した全6層・全コンポーネントを通じても最大 1.38%（L14 RESID）に留まる。15 pairs から 39 pairs への全数拡張によっても、Prompt-time における局所因果回復の極小性は揺るぎなく支持された。
-3. **Generation-Time における時空間的解離（Spatiotemporal Dissociation）**:
-   - **中盤層（Layer 10〜15）**: 生成直前トークンで介入した場合であっても、プローブ最高層 L15 MLP の回復率は **-0.06%（中央値 0.50%, 95% CI: [-2.0%, +1.8%]）** と極小のままである。
-   - **後段層（Layer 18〜24）における実質的因果回復の出現 (substantial recovery emerged)**: 一方、自己報告生成直前のコンテキストでは、局所因果回復プロファイルは後段層の **Residual Stream（L18: 42.1% [35.1%, 48.7%], L20: 50.2% [42.6%, 57.5%], L24: 53.2% [45.7%, 60.5%]）および後段 MLP（L24: 15.0% [10.5%, 19.5%]）** 側へ顕著に移行する。
-   - **外れ値駆動ではない頑健性**: *Importantly, the large late-residual effects were not driven by a small number of outlying pairs. At L20 and L24, median recovery was 60.16% and 61.57%, respectively, with positive recovery in 97.4% and 94.9% of valid matched pairs.*（極めて重要な点として、後段Residualにおける強力な因果回復効果は少数の外れ値ペアによって引き上げられたものではない。Layer 20および24における中央値回復率はそれぞれ 60.16% および 61.57% に達し、有効ペアの 97.4% および 94.9% で正の回復が確認された。IQRも [32.5%, 66.3%] および [40.2%, 71.2%] と堅固に正領域へ集中している）。
-4. **単一層射影Attention出力からの限定的因果回復 (Limited causal recovery from single-layer projected Attention outputs)**:
-   Attentionデコーダビリティが最大であった Layer 18（$R^2 = 0.5495$）を含め、全後段層において Attention output 置換の回復率は負値または 1.5% 未満（L18: -6.82%, L20: 1.32%, L24: 0.00%）であり、tested single-layer projected Attention outputs did not show strong local causal recovery（本実験で検証した単一層の射影済みAttention出力は、生成時においても強い局所因果回復を示さなかった。ただしこれはHead単位や系列回路を否定するものではない）。
-5. **本研究の中心知見: Direct Peak-Site Contrast as Primary Evidence**:
-   このpeak-site contrastは、本研究で観察されたdecodabilityとlocal causal leverageの解離を最も直接的に示す効果量ベースの証拠である（*The peak-site contrast provides the most direct effect-size evidence for the dissociation observed in this study*）：
-   $$
-   \Delta G = G_{\mathrm{L24,RESID}} - G_{\mathrm{L15,MLP}} = +53.30\% \quad (95\%\text{ bootstrap CI: } [+45.34\%, +61.16\%], \text{median difference: } +60.08\%)
-   $$
-   全28層の探索的Spearman相関（$\rho \approx 0$）は補助的証拠に過ぎず、全数コホートで評価した代表部位間における直接的な効果量対比——すなわち、**全層プローブ最高部位（Layer 15 MLP: $D=0.561, G=-0.06\%$）と、評価した全数代表部位において最大回復を示した部位（the strongest recovery among the evaluated full-cohort representative sites, Layer 24 Residual: $D=0.147, G=53.24\%$）との間の劇的な双方向解離**——こそが本研究の中心命題を支える主たる実証的証拠（primary evidence）である。線形解読能が最大化する中盤部位には局所因果レバーが存在せず、検証した局所因果回復プロファイルは自己報告直前の後段 Residual/MLP 側へ顕著にシフトする（*tested local causal recovery profile shifted toward late Residual/MLP sites during report generation*）。
-   なお、これは因果メカニズムの全体像が後段Residual単独に完全に局所化されていることを意味するものではなく、検証した局所スライス置換介入ファミリにおいて因果的レバレッジが後段に出現するという実証的解離を示すものである。
-
-15.6 Experiment 11c: Multi-Layer Simultaneous Residual Stream Patching (Redundant vs. Additive Causal Leverage)
-
-**動機と設計**:
-単一層のLayer 24 Residualパッチングによって達成された因果回復は、後段層の複数層を同時にパッチングすることでさらに100%近傍へと加算的に増強されるのか（additive synergy）、それとも後段Residual Streamは共通の情動情報を重複して前方に伝達しており、回復率は単一層水準で飽和するのか（redundant transmission）を検証した。
-
-全39組のHeld-out完全一致ペアに対し、生成直前トークン位置において以下の6通りの単一層・複数層・連続ブロックResidual Streamパッチングを実施した（スクリプト: `v3/scripts/run_generation_multilayer_residual.py`、結果: `v3/results/generation_multilayer_residual_results.csv`）：
-1. 単一層: Layer 18, Layer 20, Layer 24
-2. 2層同時: Layer 20 + Layer 24
-3. 3層同時: Layer 18 + Layer 20 + Layer 24
-4. 7層連続ブロック: Layer 18〜24（全後段Residualを一括置換）
-
-*パイプライン間の参照値に関する注記*:
-*The multilayer experiment was independently rerun under the multilayer-patching pipeline; therefore, its L24-only reference estimate (55.08%) differs slightly from the focused-sweep estimate (53.24%), though both consistently identify strong recovery around 53–55%.*（多層実験は独立した多層パッチング専用パイプライン下で実行されたため、その単層参照値（55.08%）はfocused sweepの単層推定値（53.24%）とわずかに異なるが、いずれも53〜55%の強固な回復を一貫して示している）。
-
-**表: 生成時多層Residual Streamパッチング結果（全39組完全評価）**
-
-| 条件 | 介入対象層 | Mean OT Recovery | Median OT Recovery | 95% Bootstrap CI | IQR [Q25, Q75] | Positive Fraction |
-|---|---|---|---|---|---|---|
-| 単一層 | L18 RESID | 43.51% | 51.52% | [37.2%, 49.7%] | [31.57%, 57.82%] | 94.9% |
-| 単一層 | L20 RESID | 51.85% | 61.12% | [44.6%, 59.2%] | [35.91%, 67.50%] | 97.4% |
-| 単一層 | L24 RESID | 55.08% | 62.77% | [47.5%, 62.4%] | [40.78%, 72.82%] | 97.4% |
-| 2層同時 | L20 + L24 RESID | 55.67% | 61.88% | [48.1%, 63.0%] | [41.22%, 73.11%] | 97.4% |
-| 3層同時 | L18 + L20 + L24 RESID | 55.74% | 61.88% | [48.2%, 63.0%] | [41.35%, 73.20%] | 97.4% |
-| 7層連続 | L18〜L24 RESID (全置換) | 55.35% | 62.77% | [47.8%, 62.6%] | [40.95%, 72.90%] | 97.4% |
-
-**メカニズム的解釈**:
-1. **飽和プロファイルと非加算性（Saturation at ~55%）**:
-   単一層介入（L24: 55.08%）に対し、2層同時（55.67%）、3層同時（55.74%）、7層連続（55.35%）と介入対象層を増やしても、回復率はほぼ同一のプラトー（約55.5%、中央値約62%）に留まった。
-2. **冗長または飽和的な因果寄与（Redundancy or Downstream Saturation）**:
-   *These results are consistent with substantial redundancy or saturation across late residual sites, rather than additive independent contributions.*（この結果は、後段Residual Streamの各層が互いに独立した加算的寄与を累積しているというよりは、後段部位間における実質的な冗長性や下流計算での飽和、あるいは介入状態間の依存性と整合する）。
-3. **解釈の境界づけ**:
-   本実験系単体では、同一情報の再伝播、下流の感度飽和（downstream saturation ceiling）、あるいはパッチされた表現間の相互依存を確定的に分離することはできない。しかし少なくとも、後段Residual Streamの複数部位への同時介入が単層介入を大幅に上回る追加的因果レバレッジをもたらさないという実証的境界を提供する。残存する約45%の未回復分は、検証した単一トークン・Residual介入だけでは捕捉されない計算に由来する可能性がある。これには他のトークン位置、他コンポーネント、非線形な相互作用、あるいは介入自体の回復上限などが含まれ得る。
-
-⸻
-
-16. Experiment 12: Probe-Aligned Local Necessity and Specificity Controls
-
-16.1 Motivation
-
-因果的レバレッジ（causal leverage）の検証には、matched substitutionによる局所回復（local causal recovery）だけでなく、特定のプローブ方向成分の必要性（necessity）および特異性（specificity）の評価が不可欠である。「プローブが検出している方向成分は、下流報告の生成に不可欠（necessary）なのか」「プローブ方向を除去した場合、出力報告は感情中立方向へ退行するのか」「その効果はランダムな直交方向を除去した場合と統計的に区別できるのか（特異性）」を検証する。
-
-16.2 Design
-
-各層・各コンポーネント（MLP, ATTN, RESID）の活性化ベクトル (h) に対し、学習済み線形プローブの重み方向単位ベクトル (\hat{v}_{\mathrm{probe}}) を幾何学的に完全直交射影除去する介入を施した：
-
-[
-h_{\mathrm{ablated}} = h - (h^\top \hat{v}_{\mathrm{probe}})\hat{v}_{\mathrm{probe}}
-]
-
-本実験では、以下の4大操作を厳密に分離・測定した。
-
-1. **Probe-Aligned Necessity Displacement**:
-   Peak入力に対するプローブ方向消去後の出力分布と元のPeak出力分布との2D Joint OT変位量：
-   [
-   N_\ell = \mathrm{OT}_{VA}(P_{\mathrm{peak\setminus probe}}, P_{\mathrm{peak}})
-   ]
-2. **Neutralization Ratio**:
-   プローブ方向消去によって、出力がNeutral基準分布へ実際にどれだけ近づいたかの比率：
-   [
-   R_{\mathrm{neut}} = \frac{\mathrm{OT}_{VA}(P_{\mathrm{peak}}, P_{\mathrm{neut}}) - \mathrm{OT}_{VA}(P_{\mathrm{peak\setminus probe}}, P_{\mathrm{neut}})}{\mathrm{OT}_{VA}(P_{\mathrm{peak}}, P_{\mathrm{neut}})}
-   ]
-3. **Specificity Null Controls**:
-   プローブ方向と厳密に直交する超平面からサンプリングしたランダム単位方向 (\hat{v}_{\perp}) を消去した際の変位分布に対する標準化スコア (Z_\perp) および経験的 p値。
-4. **Matched Neutral Replacement**:
-   Peak入力の対象layer/component/positionの活性化を、対応するmatched Neutral inputから得られた活性化ベクトルそのもので置換した際のコントロール変位。
-
-全28層×3コンポーネント（計84条件）に対し、直交ランダム方向サンプル数 (N=20)（擬似カウント付き経験的p値の最小分解能 (1/21 \approx 0.0476)）を用いた網羅的スクリーニングを実施した。多重比較補正としては、直交特異性帰無分布 (R_\perp) に対する84条件の仮説族として Benjamini-Hochberg FDR 補正を適用した。公開スクリプト（`v3/scripts/run_probe_aligned_necessity_sweep.py`）および公開結果データ（`v3/results/probe_aligned_necessity_sweep.csv`）には、計算されたFDR補正値（`fdr_q_perp`）が保存されている。
-
-16.3 Results
-
-全層スイープにおける主要な実測結果は以下の通りである。
-
-* **Probe Necessity Displacementの極小性**:
-   (N_\ell) の平均変位量は全層で 0.0004 〜 0.0082 の範囲に収まった。元のPeak–Neutral間の分布距離（約 0.20）と比較して 2〜4% 程度の微弱な揺らぎに過ぎない。
-* **系統的なNeutralizationは観察されなかった (Systematic Neutralization Was Not Observed)**:
-   中和比率 (R_{\mathrm{neut}}) は、全層を通じて **-3.27% 〜 +0.61%** であり、プローブ方向を消去しても出力がNeutral基準分布へ系統的に近づく傾向は認められなかった（むしろ微小な負値、すなわち直交的な摂動による歪みを示す）。
-* **特異性検定における有意差の欠如**:
-   代表層における直交帰無分布との比較結果は以下の通りである。
-   * Layer 7: MLP (Z_\perp = 0.09, p = 0.4286); ATTN (Z_\perp = 1.92, p = 0.0952); RESID (Z_\perp = 0.16, p = 0.3810)
-   * Layer 15: MLP (Z_\perp = -0.30, p = 0.6190); ATTN (Z_\perp = -0.09, p = 0.4762); RESID (Z_\perp = -0.31, p = 0.7143)
-   * Layer 21: MLP (Z_\perp = -1.21, p = 0.9048); ATTN (Z_\perp = -0.57, p = 0.7619); RESID (Z_\perp = 0.97, p = 0.2381)
-   * Layer 27: MLP (Z_\perp = 0.54, p = 0.3333); ATTN (Z_\perp = -1.84, p = 1.0000); RESID (Z_\perp = 0.27, p = 0.5714)
-   全84条件において、生p値が0.05を下回った数例（L6 MLP, L16 MLP, L19 MLP; いずれも (p = 0.0476)）を含め、Benjamini-Hochberg FDR補正後には**すべての層・コンポーネントで有意水準（(q < 0.05)）を満たすものは皆無（最小 (q = 0.857)）**であった。
-
-* **高解像度特異性検定（N=100 Random Null Directions）による追加検証**:
-   全層スクリーニング（N=20, 分解能 $1/21 \approx 0.0476$）における帰無分布の解像度を高めるため、重要代表5層（Layer 10, 15, 18, 20, 24）× 3コンポーネント（計15条件）において、**直交ランダム方向数 $N=100$（最小分解能 $1/101 \approx 0.0099$）による高解像度特異性検定**を実施した（`v3/results/focused_necessity_sweep_n100.csv`）。
-   - **プローブ必要性変位と中和比率（微小な効果量）**: プローブ方向消去時の変位量は 0.0030 〜 0.0064、中和比率 ($R_{\mathrm{neut}}$) は **-1.43% 〜 +0.39%** と一貫して効果量そのものがゼロ近傍にとどまり、系統的な中和傾向は認められなかった。
-   - **直交帰無分布との比較（特異性の欠如）**: プローブ方向の消去効果は、ランダム直交方向の消去効果を上回る特異性を示さなかった。直交帰無分布に対する特異性 Z-score ($Z_\perp$) は全15条件で一貫して負値または微小（**-3.57 〜 +0.51**）であり、未補正の経験的p値は**すべての条件で $p \ge 0.2970$**（Layer 10 MLP: 0.901, Layer 15 MLP: 0.861, Layer 18 MLP: 0.782, Layer 20 MLP: 0.822, Layer 24 MLP: 0.980, Layer 24 ATTN: 1.000）であった。効果量そのものがほぼゼロであり、直交対照群を有意に上回る変位を示さなかったため、結果としてBenjamini-Hochberg FDR補正後の $q$ 値も全15条件で $q = 1.000$（有意層 0/15）となった。
-   この高解像度検証により、*The probe-aligned direction showed neither systematic neutralization nor greater output displacement than orthogonal random directions.*（プローブ方向の消去は系統的な中和効果を示さず、出力変位量も直交ランダム方向の消去と統計的に区別できなかった）。したがって、帰無分布解像度を高めた検証においても、プローブ整合型の局所必要性を支持する証拠は得られなかった（no evidence for probe-aligned local necessity）。
-
-16.4 Defensive Framing & Interpretation
-
-本結果は、プローブ方向の除去による出力変位が、同一ノルムを持つ任意の直交ランダム方向を消去したときの非特異的変位と統計的に区別できないことを示す。
-
-ただし、この結果から「モデル内部で感情情報が一切使われていない」と過剰に主張することはできない。厳密に言えるのは、**「線形プローブによって特定された局所的1次元部分空間について、下流の報告生成に対する特異的な局所的必要性を支持する証拠は得られなかった（no evidence for probe-aligned local necessity）」** という点である。
-
-⸻
-
-17. Experiment 13: Cross-Family Partial Replication (Llama-3.2-1B-Instruct)
-
-17.1 Motivation
-
-Qwen2.5-1.5B-Instructにおいて観察された後段Residual streamへの生成時因果局所化プロファイル（late-generation causal localization profile）が、モデルファミリを越えて再現するかを検証するため、異なるモデルファミリである **Meta Llama-3.2-1B-Instruct**（16 Transformer layers）を用いて、生成時局所因果パッチングスイープのクロスファミリ部分追試（cross-family partial replication）を実施した。
-
-17.2 Results
-
-Llama-3.2-1B-Instructにおける全16層×3コンポーネントの生成時因果パッチング（Joint OT Recovery）の結果は以下の通りである（15 pairs were evaluated, of which 11 valid pairs satisfied the recovery-denominator criterion）。
-
-* **MLP output**: 回復率は全層で一貫して負値またはほぼ0%であり、最大値はLayer 15の -0.36% であった（Layer 0: -80.37%, Layer 3: -10.23%, Layer 10: -11.67%）。
-* **Attention output**: Layer 3で 0.41%、Layer 4で **最大 0.73%**、Layer 14で 0.11% の微小な正の回復率が観測されたが、全体として 1% 未満に留まった。
-* **Residual stream**: Layer 0（-36.18%）からLayer 15（-4.23%）に至る全層で一貫して負値を示し、単一層Residualの強制置換が出力コヒーレンスを破壊することを示した。
-
-17.3 Interpretation
-
-Llama-3.2-1B-Instructにおいては、生成時における単一層の局所活性化置換による因果回復率は最大でも 0.73%（Layer 4 Attention, pairwise中央値 0.00%）に留まった。したがって、Qwenで観察された後段Residual streamにおける強力な生成時因果回復（L24で53.24%）は、LLaMAアーキテクチャの初期部分追試（11 valid pairs）では再現されず、*the late-generation causal localization observed in Qwen did not replicate in the initial Llama partial replication*.
-
-この結果は、因果的レバレッジの時空間的局所化パターンがモデルアーキテクチャや訓練方策に依存する可能性を示唆している。なお、本追試は11組の有効ペアに基づく探索的・部分的な追試（partial replication）であり、デコーダビリティや必要性を含む体系全体を評価したものではないことに留意が必要である。
-
-⸻
-
-18. Integrated Results: The Four-Panel Representational–Causal Profile
-
-本研究で得られた全28層・全コンポーネントにわたる一連の実測データを統合すると、以下の多面的な実証プロファイル（Four-Panel Representational–Causal Profile）として整理できる。
-
-1. **Panel A: Layerwise Linear Decodability ($D_\ell$)**:
-   プロンプト最終トークンにおける感情強度条件（affective peak-versus-neutral condition indicator）の線形判別能は、中盤層（Layer 14–15）で極大に達する（MLP: $R^2 = 0.5610$; ATTN: $R^2 = 0.5495$; RESID: $R^2 = 0.5016$）。
-2. **Panel B: Prompt-Time Local Causal Recovery under Matched Substitution ($S_\ell$)**:
-   プロンプト最終トークンにおける同一モデル内活性化置換（Peak→Neutral）による真の2D Joint OT回復率は、全28層・全経路を通じて一貫して極小である（MLP最大 2.20%; ATTN最大 1.48%; RESID最大 1.68%）。デコーダビリティとの単調相関は認められない。
-3. **Panel C: Probe-Aligned Local Necessity Test ($N_\ell$)**:
-   プローブ方向の幾何学的射影消去による出力分布の変位量（$N_\ell = 0.0004 \sim 0.0082$）は極めて微小であり、中和比率（$R_{\mathrm{neut}} = -3.27\% \sim +0.61\%$）は系統的な中和傾向を示さない。直交ランダム方向消去との差（$Z_\perp$）は、全層×3コンポーネントのBenjamini-Hochberg FDR補正後、すべての層で非有意（$q \ge 0.857$）である。
-4. **Panel D: Generation-Time Local Causal Recovery ($G_{\ell,t}$)**:
-   自己報告生成直前のプレフィックス最終トークンにおける介入では、中盤層（Layer 10〜15）では回復率は極小（プローブ最高層Layer 15 MLPで -0.06%）にとどまる一方、後段層の **Residual Stream（Layer 18: 42.12%, Layer 20: 50.22%, Layer 24: 53.24%）および後段MLP（Layer 24: 15.04%）** において実質的な因果回復が出現する（代表層における全39組コホート評価; Prompt有効32ペア, Generation有効39ペア）。
-
-以上より、本研究は以下の4面的な統合実証プロファイル（Four-Panel Representational–Causal Profile: $D_\ell, S_\ell, N_\ell, G_{\ell,t}$）を提示する：
-
-$$
 \boxed{
-\begin{aligned}
-\text{Panel A}:& \quad \text{Intermediate representations become strongly decodable} \quad (R^2_{\mathrm{MLP},15} = 0.5610) \\
-\text{Panel B}:& \quad \text{Prompt-time local substitution has little causal leverage} \quad (S_{\mathrm{MLP},15} = 0.51\%) \\
-\text{Panel C}:& \quad \text{Probe-aligned direction removal shows no specific necessity} \quad (Z_\perp = -0.95, q = 1.000) \\
-\text{Panel D}:& \quad \text{Strong causal leverage emerges later during generation} \quad (G_{\mathrm{RESID},24,t_{\mathrm{gen}}} = 53.24\%)
-\end{aligned}
+\mathrm{Greedy\ Collapse}
+\neq
+\mathrm{Distributional\ Invariance}
 }
-$$
+]
 
-すなわち、感情情報が外部から最も明瞭に線形解読可能な中盤部位（Layer 15 MLP: $R^2=0.561$, Prompt 0.51%, Generation -0.06%）は局所的な因果影響力をほとんど持たず、強い因果レバレッジは自己報告生成直前の後段Residual Stream（Layer 24: 53.24%）において顕著に出現する。
+である。
 
-また、プロンプト時における層別相関分析（MLP: $\rho = 0.2956, p = 0.1268$, 95% Bootstrap CI: $[-0.08, 0.61]$; ATTN: $\rho = 0.0230, p = 0.9076$, 95% Bootstrap CI: $[-0.35, 0.40]$; RESID: $\rho = -0.0394, p = 0.8422$, 95% Bootstrap CI: $[-0.41, 0.35]$）が示す通り、層別デコーダビリティと局所回復率の間に単調相関は認められない（$\rho \le 0.296, p > 0.05$）。全層におけるSpearman相関は補助的証拠であり、本研究の中心命題を直接支える主たる実証的証拠は、デコーダビリティが最大化する中盤部位と因果レバレッジが出現する後段生成時部位の直接対比（Peak-site contrast: $\Delta G = +53.30\%, 95\%\mathrm{CI}: [45.34\%, 61.16\%]$）である。
+ここから分かるのは、モデルに subjective emotion が存在することではない。
 
-結論として、本知見は**「情報が最も読み取りやすい場所と、その情報が出力形成に強く作用する場所・時点は一致しない（Decodability does not localize causal leverage）」** という時空間的解離の実証例を提供する（provides empirical evidence of a spatiotemporal dissociation in Qwen2.5-1.5B-Instruct）。
+固定 candidate set 上の conditional output distribution が刺激依存的であるということである。
+
+Figure 1
+
+Greedy Collapse vs. Distributional Sensitivity
+
+Panel A: Base/Instruct における $(5,5)$ greedy output rate。
+
+Panel B: Human reader Valence と expected $E[V]$ のscatter plot。
 
 ⸻
 
-19. Discussion
+8.2 Intermediate Layers Maximally Encode the Affective Condition
 
-19.1 Low Local Recovery at Highly Decodable Sites and Absence of Probe-Aligned Local Necessity
+Prompt final token において全28層・3コンポーネントから activation を抽出し、Peak 対 Neutral 条件を予測する Ridge probe を学習した。
 
-表現学習・機械解釈性（mechanistic interpretability）研究において、高精度なリニアプローブの存在は、モデルがその属性を内部表現として獲得している強力な証拠として広く受け入れられてきた。しかし、本研究の結果は、プローブの予測能（decodability）から、その表現部位がモデルの下流計算において果たす因果的役割（causal role）を安易に同一視してはならないことを明確に示す。
+各componentの最大 held-out $R^2$ は、
 
-* **高デコード部位における局所因果回復の低さ (Low Local Recovery at Highly Decodable Sites)**: affective conditionが最も明確に読み取れるLayer 15 MLPでは、全39組を対象としたfocused evaluationにおいてPrompt-time回復率は0.51%（全28層探索スクリーニングでも1.00%）、Generation-timeでも-0.06%に留まった。
-* **Probe-aligned local necessityの不成立**: *Probe-aligned local necessity was not supported: removing the probe-aligned direction did not systematically neutralize the report distribution, and its effect was not distinguishable from orthogonal random-direction removal.*（学習済みプローブ方向を消去しても、出力の系統的な中和傾向は認められず、ランダムな直交方向を消去したときの非特異的な出力の揺らぎと統計的に区別できなかった）。
+[
+R^2_{\mathrm{MLP},15}
 
-したがって、プローブが検出する線形特徴量は、「プローブによって外部から線形にアクセス可能な情報」ではあっても、少なくとも本研究で検証した局所介入下では、自己報告出力に対する強い直接的制御ノブとして振る舞わなかった（did not behave as a strong direct control knob under the tested local interventions）。
+0.5610
+]
 
-この知見は、古典的な representation $\neq$ use の議論を以下の通りより精緻に概念整理することを促す：
+[
+R^2_{\mathrm{ATTN},18}
 
-$$
+0.5495
+]
+
+[
+R^2_{\mathrm{RESID},14}
+
+0.5016
+]
+
+であった。
+
+したがって affective condition は、特に中間層において外部線形読み出し器から高い精度でアクセスできる。
+
+ここで decodability maximum を、
+
+[
+(\ell_D^,c_D^)
+
+\arg\max_{\ell,c}
+D_{\ell,c}
+]
+
+と定義すると、
+
+[
+(\ell_D^,c_D^)
+
+(15,\mathrm{MLP})
+]
+
+である。
+
+⸻
+
+8.3 High Decodability Does Not Imply Prompt-Time Local Recovery
+
+次に、Prompt final token において Peak donor activation を matched Neutral run へ置換した。
+
+15-pair exploratory full-layer screen では、最大平均 Joint OT recovery は、
+
+* MLP: Layer 10, $2.20%$
+* Attention: Layer 20, $1.48%$
+* Residual: Layer 16, $1.68%$
+
+であり、全体として極めて小さかった。
+
+特に decodability maximum である Layer 15 MLP では、探索screenにおける recovery は約 $1%$ に留まった。
+
+全層 decodability と Prompt-time recovery の Spearman correlation は、
+
+[
+\rho_{\mathrm{MLP}}
+
+0.296,
+\qquad
+p=0.127
+]
+
+[
+\rho_{\mathrm{ATTN}}
+
+0.023,
+\qquad
+p=0.908
+]
+
+[
+\rho_{\mathrm{RESID}}
+
+-0.039,
+\qquad
+p=0.842
+]
+
+であった。
+
+28層という標本数を考慮すれば、この結果を「無相関の証明」と解釈すべきではない。しかし、少なくとも強い単調対応関係を支持する証拠は得られなかった。
+
+代表6層を39 complete matched pairs で再評価すると、Layer 15 MLP の Prompt-time recovery は、
+
+[
+0.51%
+]
+
+中央値、
+
+[
+0.47%
+]
+
+であった。
+
+つまり、
+
+[
+D_{\mathrm{L15,MLP}}
+
+0.561
+]
+
+という全サイト最大の decodability が存在しても、
+
+[
+S_{\mathrm{L15,MLP}}
+\approx0
+]
+
+であった。
+
+⸻
+
+8.4 Probe-Aligned Direction Removal Shows No Specific Local Necessity
+
+次に、Probe が学習した1次元方向自体の因果的重要性を検証した。
+
+各サイトで、
+
+[
+h’
+
+h-(h^\top \hat v_{\mathrm{probe}})
+\hat v_{\mathrm{probe}}
+]
+
+として probe direction を除去した。
+
+15-pair全層スクリーニングでは、出力分布の変位は小さく、Neutralization ratio も一貫して0近傍であった。
+
+さらに、probe direction に直交する random directions を除去した場合の empirical null distribution と比較した。
+
+84サイトに Benjamini–Hochberg FDR correction を適用すると、有意なサイトは存在しなかった。
+
+高解像度controlとして代表5層・15サイトに対して100本の orthogonal random directions を用いた場合にも、
+
+[
+p_{\perp}
+\ge0.297
+]
+
+であり、全サイトで、
+
+[
+q=1.000
+]
+
+となった。
+
+したがって、
+
+[
 \boxed{
-\begin{aligned}
-\text{Accessibility},\;
-\text{Local Causal Recovery},\;
+\text{No evidence for probe-aligned local necessity}
+}
+]
+
+である。
+
+これは probe direction がモデル全体で非因果的であるという主張ではない。
+
+より限定的に、
+
+Tested local activation slice において、その1次元線形方向を除去しても、出力の方向特異的な中和は生じなかった。
+
+という結果である。
+
+⸻
+
+8.5 Strong Local Causal Leverage Emerges During Generation
+
+Prompt final token では局所回復がほぼ観察されなかったため、介入時点を変更した。
+
+モデルに自己報告prefix、
+
+{"valence":
+
+を与え、その最終トークン位置で matched Peak activation を Neutral run へ移植した。
+
+39 complete test pairs を用いた representative-site evaluation では、結果が大きく変化した。
+
+Layer 15 MLP
+
+[
+D=0.561
+]
+
+に対して、
+
+[
+G_{\mathrm{L15,MLP}}
+
+-0.06%
+]
+
+Median:
+
+[
+0.50%
+]
+
+95% bootstrap CI:
+
+[
+[-2.02%,1.83%]
+]
+
+であった。
+
+したがって、最高decodability siteは Generation-time においてもほぼゼロの局所回復しか示さなかった。
+
+一方、late Residual stream では、
+
+[
+G_{\mathrm{L18,Resid}}
+
+42.12%
+]
+
+[
+G_{\mathrm{L20,Resid}}
+
+50.22%
+]
+
+[
+G_{\mathrm{L24,Resid}}
+
+53.24%
+]
+
+へ急増した。
+
+Layer 24 Residual の中央値は、
+
+[
+61.57%
+]
+
+95% bootstrap CI は、
+
+[
+[45.74%,60.45%]
+]
+
+であった。
+
+Prompt-time の Layer 24 Residual decodability は、
+
+[
+D_{\mathrm{L24,Resid}}
+
+0.147
+]
+
+と比較的低かった。
+
+すなわち、
+
+[
+D_{\mathrm{L15,MLP}}
+
+0.561,
+\qquad
+G_{\mathrm{L15,MLP}}
+\approx0
+]
+
+である一方、
+
+[
+D_{\mathrm{L24,Resid}}
+
+0.147,
+\qquad
+G_{\mathrm{L24,Resid}}
+
+0.5324
+]
+
+である。
+
+この結果は、decodability maximum と local causal-leverage maximum が異なることを直接示している。
+
+⸻
+
+8.6 Direct Peak-Site Contrast
+
+39ペアについて Layer 15 MLP と Layer 24 Residual の generation-time recovery を直接比較した。
+
+[
+\Delta G_i
+
+G_{i,\mathrm{L24,Resid}}
+
+G_{i,\mathrm{L15,MLP}}
+]
+
+とすると、
+
+[
+\overline{\Delta G}
+
+53.30%
+]
+
+となった。
+
+95% bootstrap confidence interval は、
+
+[
+[45.34%,61.16%]
+]
+
+であり、ゼロを大きく上回った。
+
+この contrast は、本研究の中心命題を支える主要な effect-size evidence である。
+
+つまり、
+
+[
+\boxed{
+\arg\max D_{\ell,c}
+\neq
+\arg\max G_{\ell,c,t}
+}
+]
+
+である。
+
+より具体的には、
+
+[
+\boxed{
+\text{Decodability maximum}
+
+\mathrm{L15\ MLP}
+}
+]
+
+に対して、
+
+[
+\boxed{
+\text{Strongest evaluated generation-time recovery}
+
+\mathrm{L24\ Residual}
+}
+]
+
+であった。
+
+Figure 2
+
+Four-Panel Representational–Causal Profile
+
+* Panel A: Full-layer decodability
+* Panel B: Prompt-time matched-substitution recovery
+* Panel C: Probe-aligned necessity / orthogonal-null comparison
+* Panel D: Generation-time matched-substitution recovery
+
+Figure 3
+
+Direct Decodability–Causal Leverage Dissociation
+
+左側に L15 MLP と L24 Residual の $D$ と $G$ を対比。
+
+右側に39 matched pairsの paired recovery distribution を表示する。
+
+⸻
+
+9. Secondary and Boundary Analyses
+
+9.1 Multi-Layer Late Residual Patching
+
+Late residual recovery が複数層の独立した加算効果によるものかを検証するため、Generation-time に複数のResidual sitesを同時に置換した。
+
+独立した multilayer pipeline では、
+
+* L18: $43.51%$
+* L20: $51.85%$
+* L24: $55.08%$
+* L20+L24: $55.67%$
+* L18+L20+L24: $55.74%$
+* L18–24: $55.35%$
+
+であった。
+
+Layer 24 単独から7層同時置換へ拡大しても回復率はほとんど増加しなかった。
+
+この結果は、late Residual sites が完全に独立した加算的因果寄与を持つという仮説とは整合しない。
+
+むしろ、
+
+* redundant transmission,
+* downstream saturation,
+* intervention-state dependence
+
+などと整合する。
+
+ただし、本実験だけではこれらを区別できない。
+
+⸻
+
+9.2 Cross-Model Predictive Alignment Does Not Ensure Natural Activations
+
+Base→Instruct representational mapping の補助実験では、Ridge alignment によって一定の predictive alignment が得られた。
+
+一方、mapped representations の Mahalanobis radius は natural Instruct activation と大きく異なった。
+
+Natural Instruct activation の中央値は、
+
+[
+D_M=39.63
+]
+
+である一方、mapped activations は弱正則化条件でも、
+
+[
+D_M\approx9.8
+]
+
+に収縮した。
+
+したがって、
+
+[
+\boxed{
+\text{Predictive Alignment}
+\neq
+\text{Distributional Typicality}
+}
+]
+
+である。
+
+Cross-model patching の失敗だけから functional decoupling を断定できない理由の一つである。
+
+この分析は本論文の中心証拠ではなく、cross-model causal interpretation に対する補助的 caution と位置づける。
+
+⸻
+
+9.3 Cross-Family Partial Replication
+
+Meta Llama-3.2-1B-Instruct に対し、Generation-time matched-substitution screen を実施した。
+
+Qwen2.5-1.5B-Instruct で観察された強い positive late-residual recovery は、Llama の初期追試では再現されなかった。
+
+Llama では、
+
+* MLP output の正の recovery はほぼ観察されず、
+* Attention output の最大正 recovery は1%未満、
+* Residual intervention は全16層で負の recovery
+
+となった。
+
+したがって、
+
+Qwenにおけるlate-generation Residual localizationは、少なくとも初期のLlama partial replicationでは再現されなかった。
+
+と言える。
+
+これは、
+
+[
+\text{late-residual localization is universal}
+]
+
+という主張を支持しない。
+
+一方、Llamaでは本研究と同一条件で full decodability analysis を実施していないため、より一般的な
+
+[
+\text{decodability}
+\neq
+\text{causal leverage}
+]
+
+という命題そのもののcross-family replicationとはみなさない。
+
+⸻
+
+10. Discussion
+
+10.1 Accessibility and Causal Leverage Are Different Empirical Properties
+
+本研究で最も重要なのは、Linear probe の有用性を否定することではない。
+
+Linear probe は、
+
+ある表現から外部観測者が情報を読み出せるか
+
+を測定する。
+
+Matched activation substitution は、
+
+その表現スライスを反実仮想条件へ交換したとき、下流出力が変わるか
+
+を測定する。
+
+Projection ablation は、
+
+Probeが学習した特定線形方向が、その場所で選択的に必要か
+
+を測定する。
+
+これらは異なる問いである。
+
+Qwen2.5-1.5B-Instructでは、
+
+[
+\boxed{
+\text{Accessibility},
+\quad
+\text{Local Causal Recovery},
+\quad
 \text{Direction-Specific Necessity}
-\text{ are distinct empirical axes}
-\end{aligned}
 }
-$$
+]
 
-さらに、
+が一致しなかった。
 
-$$
+特に、
+
+[
+D_{\mathrm{L15,MLP}}
+
+0.561
+]
+
+であるにもかかわらず、
+
+[
+S_{\mathrm{L15,MLP}}
+
+0.0051
+]
+
+かつ、
+
+[
+G_{\mathrm{L15,MLP}}
+\approx0
+]
+
+であった。
+
+したがって、高い decodability は tested intervention family の下で strong local control knob を意味しなかった。
+
+⸻
+
+10.2 Causal Leverage Is Temporally Recruited
+
+本研究が単純な「probeとcausalityは違う」という再確認に留まらない点は、Generation-time analysis にある。
+
+Prompt-timeではほぼ存在しなかった強い matched-substitution recovery が、自己報告生成直前には late Residual stream に出現した。
+
+これは、
+
+[
 \boxed{
 \text{Causal leverage is position- and time-dependent}
 }
-$$
+]
 
-すなわち、本研究の実証系は、
-1. **Accessibility**: リニアプローブによる線形アクセス可能性（$D_\ell$）
-2. **Local Sufficiency / Leverage**: matched activation substitutionによる出力回復度（$S_\ell, G_{\ell,t}$）
-3. **Direction-Specific Necessity**: probe direction ablationによる特異的中和度（$N_\ell$）
-4. **Temporal Recruitment**: プロンプト最終トークン vs 自己報告生成直前トークンの時間依存的介入（$t_{\mathrm{prompt}}$ vs $t_{\mathrm{gen}}$）
-を独立した操作的指標として切り分け、それぞれの所在と強度が劇的に解離し得ることを実証した。
+という可能性を示す。
 
-19.2 Tests of Four Major Alternative Explanations
+つまり、情報は中間層ですでに外部から読み取れるものの、その情報が出力形成に強く作用する形へ再構成されるのは、より後段かつ生成時である可能性がある。
 
-本研究で実施した4大因果検証実験は、先行研究で想定され得る主要な代替説明を直接検証した。
+ただし、この結果から、
 
-1. **反論1: 「Matched substitutionによる回復（Local Recovery）だけでなく、特定のプローブ方向成分の除去（Necessity）を測定すべきではないか」**:
-   → **実証的回答**: 幾何学的直交射影によるProbe direction ablationおよびSpecificity control（84条件BH-FDR補正）を実施した。結果、プローブ方向消去による中和比率は一貫して 0% 近傍（-3.27%〜+0.61%）であり、特異的有意差（$q < 0.05$）を示す層は皆無であった。したがって、プローブ整合型の局所必要性を支持する証拠は得られなかった（No evidence for probe-aligned local necessity）。
-2. **反論2: 「Prompt時ではなくGeneration時に因果レバレッジが出現するのではないか」**:
-   → **実証的回答**: この懸念は部分的に正当であることが実験的に実証された。自己報告生成直前のプレフィックス最終トークンにおいて全39ペアの全数コホート介入を実施したところ、中盤層（L15 MLP: -0.06%）では回復率は極小のままであったが、後段Residual streamにおいて強い因果回復が出現し、Layer 24 Residualでは **53.24%（中央値 61.57%）** に達した。すなわち、検証した局所因果回復プロファイルが自己報告直前の後段 Residual/MLP 側へ移行することが実証された（*tested local causal recovery profile shifted toward late Residual/MLP sites during report generation*）。しかし同時に、この強い生成時因果レバレッジは**プローブ解読能がピークとなる中盤層（L15 MLP）ではなく、後段Residual streamで顕著に観測され（emerged in the late residual stream in Qwen2.5-1.5B-Instruct）**、「線形解読能は因果レバレッジの所在部位を指示しない」という中心命題をより一層支持する結果となった。
-3. **反論3: 「因果回路がAttention経路にあるのではないか」**:
-   → **実証的回答**: MLP outputだけでなく、各層のprojected Attention-module outputおよびResidual streamの全層パッチングを実施した。当該トークン位置での単一層射影済みAttention出力の回復率もプロンプト時最大 1.48%（L20）、生成時最大 4.23%（L20; 全数39ペアでは 1.32%）に留まり、We found no evidence that a single-layer projected attention output at the tested token position acts as a strong local causal bottleneck.（本実験で検証した特定トークン位置における単一層の射影済みAttention出力が、強力な局所的因果ボトルネックとして機能する証拠は見出されなかった）。
-4. **反論4: 「観察された局所化プロファイルはモデルファミリを越えて一般化するか」**:
-   → **実証的回答**: 少なくとも初期のLlama部分追試（Llama-3.2-1B-Instruct, 全16層, 11 valid pairs）では一般化しなかった。LLaMAにおける因果回復率は全層で一貫して 1% 未満（最大 0.73% at L4 ATTN、中央値 0.00%）に留まり、Qwenで観測された後段Residual streamへの強い局所回復は再現されなかった（*the late-generation causal localization observed in Qwen did not replicate in the initial Llama partial replication*）。この結果は、後段Residualへの因果レバレッジの局在化プロファイルがモデルファミリや訓練方策に依存する可能性を示している（ただし、Llamaではprobe decodabilityを測定していないため、より一般的な decodability ≠ causal leverage 命題自体の棄却を意味するものではない）。
+L24 Residual が感情情報の起源である
 
-19.3 Defensive Framing: What These Findings Do and Do Not Mean
+とは言えない。
 
-本研究の解釈において、以下の境界づけ（defensive framing）が極めて重要である。
+Residual stream は上流計算の累積状態であり、そこで大きな intervention sensitivity が観測されることは、その情報がそこで初めて生成されたことを意味しない。
 
-* **断定してはならない過剰主張**:
-  * 「モデルは感情情報を一切下流計算に利用していない」
-  * 「因果回路が存在しない」
-  * 「生成時介入でも感情は全く動かない」
-* **実験データから支持される厳密な結論**:
-  * 「プローブによって同定される中盤層の高decodability部位およびprobe-aligned 1次元方向は、強い局所的因果レバレッジを示さなかった。一方、generation-timeには後段Residual streamで substantial local causal leverage が出現した。」
-  * These findings are consistent with distributed, multi-position, or dynamically recruited computation, but do not distinguish among these alternatives.（これらの結果は、系列全体にわたる分散的表現・複数位置での動的計算・あるいは非線形な伝播経路と整合するものの、本研究のデータ単体からそれらの競合仮説を確定的に識別・証明するものではない）。
+本研究が示すのは、あくまで、
+
+tested local matched-substitution intervention に対する最大の下流感受性が、その時点・その部位に現れた
+
+ということである。
 
 ⸻
 
-20. Limitations
+10.3 Decodability Does Not Identify the Causal Direction
 
-1. **非局所的・複数層パスパッチングの未網羅**:
-   本研究では1/2/4/8層の連続ブロックパッチングおよび単一層全層スイープを実施したが、非連続な疎結合回路（sparse circuit）や特定Attention Head間の相互作用パスを網羅するPath Patchingまでは実施していない。
-2. **非線形アライメントの未検証**:
-   Base/Instruct間の表現対応づけにはRidge回帰（線形写像）を用いており、非線形多様体アライメントにおける幾何学的歪みの完全な解消には至っていない。
-3. **モデル規模**:
-   検証は1B〜1.5B規模のオープンウェイトモデル（Qwen2.5-1.5B, Llama-3.2-1B）に集中しており、7B以上の大規模モデルにおけるスケール効果の確認は将来の課題である。
-4. **因果スイープにおけるサンプル規模の制約**:
-   全層×3コンポーネントに及ぶ全層網羅スクリーニング（Joint OT、生成時パッチング、プローブ方向射影消去）は、計算コスト制約から事前に固定したテストペアのサブセット（15 pairs）を用いて評価された（*The full-layer exploratory sweep used a computationally constrained subset of 15 held-out matched pairs; therefore, recovery estimates should be interpreted as localization evidence rather than precise population-level effect estimates.*）。なお、代表層（Layer 10, 14, 15, 18, 20, 24）についてはHeld-out完全一致ペア（全39組評価; Prompt有効32ペア, Generation有効39ペア）による全数コホート評価を実施し、中盤層プローブピークにおけるPrompt-time局所因果回復の低さ（~0%）および生成時における後段Residual Streamへの因果レバレッジの動的シフト（最大53.24%）が確認されている。
+Probe direction removal の結果も重要である。
+
+もし linear probe の weight vector がモデル自身の因果的「感情軸」であるなら、その方向を除去すれば output distribution が Neutral 側へ系統的に移動すると期待される。
+
+しかし、そのような傾向は得られなかった。
+
+さらに、その変位は probe-orthogonal random direction removal と区別できなかった。
+
+したがって、
+
+[
+\boxed{
+\text{A predictive linear direction need not be a causal control direction}
+}
+]
+
+である。
+
+この結果は linear representation engineering を否定するものではない。
+
+Addition steering と deletion-based necessity は異なる intervention であり、ある方向を強く外挿することで行動を動かせても、その方向が natural computation において必要とは限らない。
 
 ⸻
 
-21. Conclusion
+10.4 Implications for Mechanistic Interpretability
 
-本研究は、大規模言語モデルにおける情動関連表現をケーススタディとして、内部表現の線形解読能（decodability）と、検証した局所介入における因果的レバレッジ（causal leverage）の所在との乖離を示した。
+本研究の結果は、LLM内部表現を解析する際、少なくとも以下の4軸を分離する必要性を示す。
 
-Qwen2.5-1.5Bを用いた体系的実験と、Llama-3.2-1B-Instructを用いたgeneration-time部分追試により、以下の包括的結論が得られた：
-
-1. 中間層で高いdecodabilityを示し、affective peak-versus-neutral condition の線形デコード能はMLPではLayer 15（$R^2 = 0.5610$）、AttentionではLayer 18（$R^2 = 0.5495$）、Residual streamではLayer 14（$R^2 = 0.5016$）において最大となった。
-2. しかし、同一部位の局所活性化を置換しても、自己報告分布の回復率はプロンプト時でわずか 0.51%（Layer 15 MLP）、生成時でも -0.06% に留まり、線形解読能がピークとなる部位に対する matched activation substitution は自己報告分布を実質的に回復しなかった（低局所回復）。
-3. 学習済みプローブ方向を除去しても系統的な中和傾向は認められず、その出力変位は直交ランダム方向の除去と統計的に区別されなかった（N=100高解像度追試でも評価した代表15条件すべてで $q = 1.000$）。
-4. 一方で、自己報告生成直前のコンテキストにおいては、後段Residual Stream（Layer 18〜24）に強力な因果レバレッジが出現し、最大 53.24%（中央値 61.57%）の因果回復を達成した。
-
-総じて、本研究の知見は次の一文に集約される：
-> **Affective condition was most linearly decodable at intermediate layers, yet those same sites showed little causal recovery under matched activation substitution. Strong causal leverage instead emerged later, during report generation, particularly in the late residual stream. Probe-aligned direction removal showed no specific local necessity. Together, these results show that linear decodability identifies where information is accessible, but does not by itself identify where, when, or along which direction that information becomes causally effective.**
-
-すなわち、本研究が実証した中心命題は次のように定式化される：
 [
-\boxed{\text{Linear Decodability} \not\Rightarrow \text{Causal Localization}}
+\boxed{
+\begin{aligned}
+&\textbf{Accessibility:}
+&&\text{Can an external decoder read the information?}\
+&\textbf{Local leverage:}
+&&\text{Does matched substitution change the output?}\
+&\textbf{Directional necessity:}
+&&\text{Is the probe-aligned direction specifically required?}\
+&\textbf{Temporal recruitment:}
+&&\text{When does causal sensitivity emerge?}
+\end{aligned}
+}
 ]
 
-さらに、
+Linear probing は第一の問いに強い。
+
+しかし第二から第四を測定するには、因果介入が必要である。
+
+したがって、
+
+「Layer $\ell$ に concept X が表現されている」
+
+という表現を、
+
+「Layer $\ell$ から concept X を外部線形読み出し器で高精度に復元できる」
+
+と限定して記述することが望ましい。
+
+さらに因果的主張を行う場合には、substitution、ablation、temporal intervention、random-direction control などを併用する必要がある。
+
+⸻
+
+11. Limitations
+
+第一に、本研究の local causal leverage は単一層・単一コンポーネント・単一トークン位置を中心とした intervention family に基づいている。したがって、Attention head単位の回路、KV cacheを介した経路、複数token positionにまたがる相互作用、非線形なdistributed circuitを網羅していない。
+
+第二に、全層 exploratory sweep は15 matched pairs に基づく。Representative sites は39 complete pairsで再評価しているが、候補層の一部は探索screenを参考に選択されている。そのため39-pair analysisはeffect-size stabilizationとして解釈し、完全にselection-independentなconfirmatory studyとはみなさない。
+
+第三に、主要解析はQwen2.5-1.5B-Instructに集中している。Llama-3.2-1B-InstructではQwenのlate Residual profileは再現されなかったが、full decodability と necessity を含む完全なcross-family replicationではない。
+
+第四に、本研究の出力空間は81候補の constrained VA distribution であり、自由形式の長文生成タスクへそのまま一般化できるとは限らない。
+
+第五に、本研究の「first-person report」はtask-level outputである。測定されたdistribution shiftやinternal representationは、モデルのphenomenal affect、subjective experience、conscious introspectionの存在を意味しない。
+
+⸻
+
+12. Conclusion
+
+本研究では、LLMにおけるaffect-relevant representationsをケーススタディとして、線形アクセス可能性と局所的因果レバレッジを直接比較した。
+
+Qwen2.5-1.5B-Instructでは、Peak対Neutral条件は中間層から高精度に線形デコード可能であり、最大値は、
+
 [
-\boxed{\text{where information is decodable} \neq \text{where/when it becomes causally effective}}
+R^2_{\mathrm{L15,MLP}}
+
+0.561
 ]
 
-より一般的な解釈性研究の文脈において、本知見は次のように総括される：
-> **“Linear accessibility identifies information that can be externally read from an activation, but does not by itself identify where, when, or along which direction strong causal leverage operates in the model’s downstream computation.”**
+であった。
 
-これらの結果は、linear probingによるrepresentation accessibilityの評価を、matched substitutionによるlocal causal recovery、direction-specific ablationによるnecessity/specificity、およびgeneration positionを考慮した時間依存的介入と組み合わせる多面的検証を、機械解釈性研究における標準プロトコルとして検討する価値を示している。
+しかし、この最高解読部位をmatched counterfactual activationで置換しても、
 
+[
+S_{\mathrm{L15,MLP}}
+
+0.51%
+]
+
+に留まり、Generation-timeでも、
+
+[
+G_{\mathrm{L15,MLP}}
+
+-0.06%
+]
+
+であった。
+
+また、probe-aligned direction removal は系統的なNeutralizationを生じず、probe-orthogonal random direction removal を上回る特異的必要性も支持されなかった。
+
+一方、自己報告生成直前にはlate Residual streamに大きなlocal causal recoveryが現れ、
+
+[
+G_{\mathrm{L24,Resid}}
+
+53.24%
+]
+
+となった。
+
+同一39ペアにおける直接対比は、
+
+[
+\Delta G
+
+53.30%
+]
+
+95% bootstrap CI:
+
+[
+[45.34%,61.16%]
+]
+
+であった。
+
+したがって、本研究の中心的知見は、
+
+[
+\boxed{
+\text{where information is linearly decodable}
+\neq
+\text{where and when strong local causal leverage emerges}
+}
+]
+
+という時空間的解離である。
+
+Linear probing は、情報が外部観測者にとってアクセス可能な場所を同定する。しかし、それだけでは、その情報がモデル自身の下流計算においてどこで、いつ、どの方向に沿って因果的に有効になるかを同定しない。
+
+[
+\boxed{
+\textbf{Decodability Does Not Localize Causal Leverage}
+}
+]
+
+⸻
 ⸻
 
 Appendix A. Full-Layer Causal Localization Sweep (Prompt-Time Joint OT)
