@@ -109,8 +109,8 @@ def plot_figure1():
                   color=COLORS[comp], lw=2.2, label=f"{comp.upper()} (N=39 focused)")
 
     ax_b.axhline(0, color='gray', linestyle='-', linewidth=0.8, alpha=0.7)
-    ax_b.annotate("L15 MLP (Probe Peak):\n$S_{\\mathrm{L15,MLP}} = 0.06\\%$", 
-                  xy=(15, 0.055), xytext=(13, 2.5),
+    ax_b.annotate("L15 MLP (Probe Peak):\n$S_{\\mathrm{L15,MLP}} = 0.51\\%$", 
+                  xy=(15, 0.51), xytext=(13, 2.5),
                   arrowprops=dict(arrowstyle="->", color=COLORS['mlp'], lw=1.2),
                   fontsize=8.5, fontweight='bold', color=COLORS['mlp'],
                   bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=COLORS['mlp'], alpha=0.9))
@@ -130,8 +130,8 @@ def plot_figure1():
     # 95% CIs precomputed from N=39 pairs
     ci_dict = {
         ('resid', 10): (-2.5, -0.1), ('resid', 14): (-1.7, 1.9), ('resid', 15): (4.5, 10.2),
-        ('resid', 18): (35.2, 47.7), ('resid', 20): (42.6, 57.8), ('resid', 24): (46.0, 60.9),
-        ('mlp', 10): (-1.8, 1.5), ('mlp', 14): (-2.7, -0.3), ('mlp', 15): (-0.5, 3.3),
+        ('resid', 18): (35.2, 47.7), ('resid', 20): (42.6, 57.8), ('resid', 24): (45.74, 60.45),
+        ('mlp', 10): (-1.8, 1.5), ('mlp', 14): (-2.7, -0.3), ('mlp', 15): (-2.02, 1.83),
         ('mlp', 18): (5.2, 9.6), ('mlp', 20): (6.1, 13.0), ('mlp', 24): (11.0, 19.4),
         ('attn', 10): (-0.3, 1.7), ('attn', 14): (-2.1, 0.0), ('attn', 15): (-0.1, 6.0),
         ('attn', 18): (-9.8, -5.7), ('attn', 20): (-0.8, 2.8), ('attn', 24): (-0.6, 0.5),
@@ -151,14 +151,14 @@ def plot_figure1():
                      label=label, color=COLORS[comp], lw=2.2, capsize=4, capthick=1.2)
 
     ax_c.axhline(0, color='gray', linestyle='-', linewidth=0.8, alpha=0.7)
-    ax_c.annotate("Late Residual Surge:\nL24: 53.48% (Med: 59.4%)\nL20: 50.22% (Med: 57.9%)\nL18: 41.48% (Med: 48.5%)", 
-                  xy=(24, 53.48), xytext=(11, 40.0),
+    ax_c.annotate("Late Residual Surge:\nL24: 53.24% (Med: 61.6%)\nL20: 50.22% (Med: 60.2%)\nL18: 42.12% (Med: 49.3%)", 
+                  xy=(24, 53.24), xytext=(11, 40.0),
                   arrowprops=dict(arrowstyle="->", color=COLORS['resid'], lw=1.4),
                   fontsize=8.5, fontweight='bold', color=COLORS['resid'],
                   bbox=dict(boxstyle="round,pad=0.3", fc="#eefaf5", ec=COLORS['resid'], alpha=0.95))
 
-    ax_c.annotate("L15 MLP (Probe Peak):\n$G = 1.39\\%$", 
-                  xy=(15, 1.39), xytext=(11, -8.0),
+    ax_c.annotate("L15 MLP (Probe Peak):\n$G = -0.06\\%$", 
+                  xy=(15, -0.06), xytext=(11, -8.0),
                   arrowprops=dict(arrowstyle="->", color=COLORS['mlp'], lw=1.2),
                   fontsize=8.5, color=COLORS['mlp'],
                   bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=COLORS['mlp'], alpha=0.9))
@@ -180,8 +180,8 @@ def plot_figure1():
                   'Prompt-Time Recovery\n($S_\\ell: \\%$)', 
                   'Generation-Time Recovery\n($G_{\\ell,t}: \\%$)']
     
-    l15_vals = [0.5610 * 100, 0.0556, 1.3948]
-    l24_vals = [0.1470 * 100, 0.2005, 53.4835]
+    l15_vals = [0.5610 * 100, 0.5101, -0.0597]
+    l24_vals = [0.1470 * 100, -0.2635, 53.2432]
     
     x = np.arange(len(categories))
     width = 0.36
@@ -194,29 +194,33 @@ def plot_figure1():
     # Value labels on top of bars
     for rect in rects1:
         height = rect.get_height()
-        ax_d.annotate(f'{height:.1f}%' if height > 1 else f'{height:.2f}%',
+        va = 'bottom' if height >= 0 else 'top'
+        y_offset = 3 if height >= 0 else -10
+        ax_d.annotate(f'{height:.1f}%' if abs(height) > 1 else f'{height:.2f}%',
                       xy=(rect.get_x() + rect.get_width() / 2, height),
-                      xytext=(0, 3), textcoords="offset points",
-                      ha='center', va='bottom', fontsize=8.5, fontweight='bold', color=COLORS['mlp'])
+                      xytext=(0, y_offset), textcoords="offset points",
+                      ha='center', va=va, fontsize=8.5, fontweight='bold', color=COLORS['mlp'])
     for rect in rects2:
         height = rect.get_height()
-        ax_d.annotate(f'{height:.1f}%' if height > 1 else f'{height:.2f}%',
+        va = 'bottom' if height >= 0 else 'top'
+        y_offset = 3 if height >= 0 else -10
+        ax_d.annotate(f'{height:.1f}%' if abs(height) > 1 else f'{height:.2f}%',
                       xy=(rect.get_x() + rect.get_width() / 2, height),
-                      xytext=(0, 3), textcoords="offset points",
-                      ha='center', va='bottom', fontsize=8.5, fontweight='bold', color=COLORS['resid'])
+                      xytext=(0, y_offset), textcoords="offset points",
+                      ha='center', va=va, fontsize=8.5, fontweight='bold', color=COLORS['resid'])
         
     ax_d.set_xticks(x)
     ax_d.set_xticklabels(categories, fontsize=9.5)
     ax_d.set_ylabel("Metric Magnitude (%)")
-    ax_d.set_ylim(-2, 72)
+    ax_d.set_ylim(-10, 72)
     ax_d.set_title("(d) Peak-Site Contrast (L15 MLP vs. L24 Residual)", fontweight='bold', loc='left')
     ax_d.legend(loc='upper right', frameon=True, framealpha=0.9)
     
     # Central Thesis Banner inside Panel (d)
     banner_text = (
         "Peak-Site Contrast:\n"
-        "$\\Delta G = G_{\\mathrm{L24,RESID}} - G_{\\mathrm{L15,MLP}} = +52.09\\%$\n"
-        "$95\\%\\text{ bootstrap CI: } [+44.4\\%, +59.7\\%]\n\n"
+        "$\\Delta G = G_{\\mathrm{L24,RESID}} - G_{\\mathrm{L15,MLP}} = +53.30\\%$\n"
+        "$95\\%\\text{ bootstrap CI: } [+45.34\\%, +61.16\\%]\n\n"
         "\"Where information is readable \\neq\n"
         " where it becomes causally effective\""
     )

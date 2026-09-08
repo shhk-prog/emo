@@ -10,9 +10,9 @@
 
 第一に、affective peak versus neutral conditionの線形decodabilityは中間層で高く、MLPではLayer 15（$R^2=0.561$）、AttentionではLayer 18（$R^2=0.550$）、Residual streamではLayer 14（$R^2=0.502$）で最大となった。
 
-第二に、この高い線形アクセス可能性は局所因果レバレッジを意味しない。初期15-pair探索スクリーニング（Stage 1）ではLayer 15 MLPのPrompt-time回復率は1.00%に留まり、39-pair focused full-cohort evaluation（Stage 2: Prompt有効 N=32, Generation有効 N=39）ではさらに0.06%（中央値0.07%）であった。Generation-timeでも1.39%（中央値0.50%）に留まった。Prompt-time探索的全層スクリーニングでは、層別decodabilityとlocal causal recoveryの間に統計的に検出可能な単調関係は認められなかった（$\rho \le 0.296, p > 0.05$）。
+第二に、この高い線形アクセス可能性は局所因果レバレッジを意味しない。初期15-pair探索スクリーニング（Stage 1）ではLayer 15 MLPのPrompt-time回復率は1.00%に留まり、39-pair focused full-cohort evaluation（Stage 2: Prompt有効 N=32, Generation有効 N=39）ではさらに0.51%（中央値0.47%）であった。Generation-timeでも-0.06%（中央値0.50%, 95% CI: [-1.8%, +1.9%]）に留まった。Prompt-time探索的全層スクリーニングでは、層別decodabilityとlocal causal recoveryの間に統計的に検出可能な単調関係は認められなかった（$\rho \le 0.296, p > 0.05$）。
 
-第三に、自己報告生成直前には、prompt-time decodabilityが比較的低い後段Residual streamに強いmatched-substitution recoveryが出現した（Layer 24: prompt-time $R^2=0.147$, generation-time recovery = 53.48%）。一方、学習済みプローブ方向の幾何学的射影消去は系統的な中和をもたらさず、直交ランダム方向消去を上回る特異的効果を示さなかった。なお、Llama-3.2-1B-Instructでの初期部分追試では後段Residual局在は再現されず、モデル依存性が示唆された。
+第三に、自己報告生成直前には、prompt-time decodabilityが比較的低い後段Residual streamに強いmatched-substitution recoveryが出現した（Layer 24: prompt-time $R^2=0.147$, generation-time recovery = 53.24% [中央値 61.57%, 95% CI: +45.5% to +60.0%]）。一方、学習済みプローブ方向の幾何学的射影消去は系統的な中和をもたらさず、直交ランダム方向消去を上回る特異的効果を示さなかった。なお、Llama-3.2-1B-Instructでの初期部分追試では後段Residual局在は再現されず、モデル依存性が示唆された。
 
 以上の結果は、**表現のアクセス可能性（accessibility）と局所的因果レバレッジ（local causal leverage）が経験的に解離し得る（empirically dissociable）別個の性質である**ことを示す。Linear probingが情報を外部から読み取れる場所を同定しても、その情報がモデルの下流計算において強い因果的影響力を持つ場所、時点、あるいは方向をそれ自体では同定しない。すなわち、**Decodability does not localize causal leverage**。
 
@@ -159,10 +159,10 @@ Instructモデルにおいて、greedy decodingは98.6%のサンプルで中立�
 さらに、本研究では以下の対立仮説を独立実験により二段階で検証・評価した：
 
 - **Stage 1: Exploratory Generation-time Screen (15-pair Sweep)**: 初期の15-pair全層探索スクリーニング（`v3/results/generation_time_causal_sweep.csv`）において、中盤層（Layer 15 MLP: -1.99%）における局所因果回復の欠如と、**Layer 18〜27の後段Residual streamにおける急激な因果回復（40.01%〜50.26%、中央値 46.34%〜56.05%）**という時空間的局所化プロファイルが同定された。この結果は、プロンプト時には隠蔽されていた因果レバレッジが自己報告生成直前に後段Residual streamへ動的に移行することを示唆した。
-- **Stage 2: Focused Full-Cohort Evaluation on Representative Layers**: 初期スクリーニングで得られた候補層に加え、probe peakおよびcomponent-specific representative layersを含む代表6層（L10, 14, 15, 18, 20, 24）について、Held-out test全39組の完全一致ペアを評価対象とした（`v3/results/focused_causal_sweep_39pairs.csv`）。分母セーフガード適用後、Prompt時32ペア、Generation時39ペアが有効であった。なお、代表層にはプローブ定義層に加え探索スクリーニングからの優先層も含まれるため、本全数評価は選択独立な確認的仮説検定ではなく、探索的に同定された効果の安定性と効果量を全コホート上で再評価することを目的とする。結果、プローブ最高層 Layer 15 MLP（$R^2=0.5610$）の回復率はPrompt時 **0.06%**（中央値 0.07%）、Generation時でも **1.39%**（中央値 0.50%, 95% CI: [-0.5%, +3.3%]）に留まった。一方、生成時においては後段層の **Residual Stream（L18: 41.48% [35.2%, 47.7%], L20: 50.22% [42.6%, 57.8%], L24: 53.48% [46.0%, 60.9%]）および後段MLP（L24: 15.23% [11.0%, 19.4%]）** に実質的な因果回復が出現し、Stage 1で観測された後段Residualへの強い局所化が完全再現された（*tested local causal recovery profile shifted toward late Residual/MLP sites during report generation*）。極めて重要な点として、*Importantly, the large late-residual effects were not driven by a small number of outlying pairs. At L20 and L24, median recovery was 57.93% and 59.44%, respectively, with positive recovery in 97.4% and 94.9% of valid matched pairs.*（L20およびL24の中央値回復率は 57.93% および 59.44% であり、有効ペアの 97.4% および 94.9% で正の回復が確認されたため、少数の外れ値による歪みではない）。
-- **Multi-Layer Simultaneous Residual Stream Patching**: 単一層のL24 Residual（55.08%）に対し、2層（L20+24: 55.67%）、3層（L18+20+24: 55.74%）、7層連続（L18〜24: 55.35%）と多層同時パッチングを行っても、回復率は約55%（中央値約62%）で完全に飽和した。この結果は、後段Residual Streamの各層が互いに独立した加算的寄与を累積しているというよりは、後段部位間における実質的な冗長性や下流計算での飽和、あるいは介入状態間の依存性と整合する（*consistent with substantial redundancy or saturation across late residual sites, rather than additive independent contributions*）。
+- **Stage 2: Focused Full-Cohort Evaluation on Representative Layers**: 初期スクリーニングで得られた候補層に加え、probe peakおよびcomponent-specific representative layersを含む代表6層（L10, 14, 15, 18, 20, 24）について、Held-out test全39組の完全一致ペアを評価対象とした（`v3/results/focused_causal_sweep_39pairs.csv`）。分母セーフガード適用後、Prompt時32ペア、Generation時39ペアが有効であった。なお、代表層にはプローブ定義層に加え探索スクリーニングからの優先層も含まれるため、本全数評価は選択独立な確認的仮説検定ではなく、探索的に同定された効果の安定性と効果量を全コホート上で再評価することを目的とする。結果、プローブ最高層 Layer 15 MLP（$R^2=0.5610$）の回復率はPrompt時 **0.51%**（中央値 0.47%）、Generation時でも **-0.06%**（中央値 0.50%, 95% CI: [-1.8%, +1.9%]）に留まった。一方、生成時においては後段層の **Residual Stream（L18: 42.12% [35.2%, 48.2%], L20: 50.22% [42.8%, 57.5%], L24: 53.24% [45.5%, 60.0%]）および後段MLP（L24: 15.04% [10.4%, 19.4%]）** に実質的な因果回復が出現し、Stage 1で観測された後段Residualへの強い局所化が完全再現された（*tested local causal recovery profile shifted toward late Residual/MLP sites during report generation*）。極めて重要な点として、*Importantly, the large late-residual effects were not driven by a small number of outlying pairs. At L20 and L24, median recovery was 60.16% and 61.57%, respectively, with positive recovery in 97.4% and 94.9% of valid matched pairs.*（L20およびL24の中央値回復率は 60.16% および 61.57% であり、有効ペアの 97.4% および 94.9% で正の回復が確認されたため、少数の外れ値による歪みではない）。
+- **Multi-Layer Simultaneous Residual Stream Patching**: 単一層のL24 Residual（55.08%）に対し、2層（L20+24: 55.67%）、3層（L18+20+24: 55.74%）、7層連続（L18〜24: 55.35%）と多層同時パッチングを行っても、回復率は約55%（中央値約62%）で完全に飽和した。この結果は、後段Residual Streamの各層が互いに独立した加算的寄与を累積しているというよりは、後段部位間における実質的な冗長性や下流計算での飽和、あるいは介入状態間の依存性と整合する（*consistent with substantial redundancy or saturation across late residual sites, rather than additive independent contributions*）。*なお、多層実験は独立パイプラインで再実行されたため、その単層参照値（55.08%）はfocused sweepの単層推定値（53.24%）とわずかに異なるが、ともに53〜55%の強固な回復を示している。*
 - **Probe-Aligned Necessity Sweep & N=100 Focused Test**: プローブ方向の直交射影消去による中和比率は全層で -3.27%〜+0.61% であり、系統的な中和傾向は認められなかった。重要代表5層における **N=100 ランダム直交方向高解像度追試**（`v3/results/focused_necessity_sweep_n100.csv`）でも、多重比較補正以前の段階ですべての条件で未補正の経験的 $p \ge 0.297$（$Z_\perp \le 0.51$）であり、BH-FDR補正後も全15条件で $q = 1.000$（有意層 0/15）となった。すなわち、プローブ方向の消去は系統的な中和をもたらさず、直交ランダム方向を上回る出力変位も示さなかった。
-- **Attention Pathway**: 単一層射影済みAttention出力の置換でも因果回復率は極小（Prompt最大1.48%, Generation最大4.23%）であり、tested single-layer projected Attention outputs did not show strong local causal recovery（本実験で検証した単一層の射影済みAttention出力が、強力な局所的因果ボトルネックとして機能する証拠は見出されなかった）。
+- **Attention Pathway**: 単一層射影済みAttention出力の置換でも因果回復率は極小（Prompt最大1.48%, Generation最大4.23%; 全数39ペアでは 1.32%）であり、tested single-layer projected Attention outputs did not show strong local causal recovery（本実験で検証した単一層の射影済みAttention出力が、強力な局所的因果ボトルネックとして機能する証拠は見出されなかった）。
 - **Cross-Family Partial Replication**: Llama-3.2-1B-Instruct（11 valid pairs）での初期部分追試では生成時回復率は最大0.73%（pairwise中央値0.00%）に留まり、Qwenで観測された後段Residualへの強い局所回復は再現されなかった。これは後段Residualへの因果レバレッジ局在化がモデルファミリや訓練方策に依存する可能性を示唆している。
 
 したがって、
@@ -175,9 +175,9 @@ $$\boxed{\text{where information is decodable} \neq \text{where/when it becomes 
 
 このpeak-site contrastは、本研究で観察されたdecodabilityとlocal causal leverageの解離を最も直接的に示す効果量ベースの証拠である（*The peak-site contrast provides the most direct effect-size evidence for the dissociation observed in this study*）：
 $$
-\Delta G = G_{\mathrm{L24,RESID}} - G_{\mathrm{L15,MLP}} = +52.09\% \quad (95\%\text{ bootstrap CI: } [+44.4\%, +59.7\%])
+\Delta G = G_{\mathrm{L24,RESID}} - G_{\mathrm{L15,MLP}} = +53.30\% \quad (95\%\text{ bootstrap CI: } [+45.34\%, +61.16\%], \text{median difference: } +60.08\%)
 $$
-すなわち、全28層の探索的Spearman相関（$\rho \approx 0$）は補助的証拠であり、全数コホートで評価した代表部位間における直接的な効果量対比——すなわち、**全層プローブ最高部位（Layer 15 MLP: $D=0.561, G=1.39\%$）と、評価した全数代表部位において最大回復を示した部位（the strongest recovery among the evaluated full-cohort representative sites, Layer 24 Residual: $D=0.147, G=53.48\%$）との間の劇的な双方向解離**——こそが本研究の中心命題を支える主たる実証的証拠（primary evidence）である。最大解読能を示す中間層（L15 MLP）はPrompt時・Generation時を問わず局所因果レバレッジをほとんど持たない一方、強い因果レバレッジは自己報告生成直前の後段Residual Stream（L18〜L24）に時間的・空間的に解離して出現することが実証された。
+すなわち、全28層の探索的Spearman相関（$\rho \approx 0$）は補助的証拠であり、全数コホートで評価した代表部位間における直接的な効果量対比——すなわち、**全層プローブ最高部位（Layer 15 MLP: $D=0.561, G=-0.06\%$）と、評価した全数代表部位において最大回復を示した部位（the strongest recovery among the evaluated full-cohort representative sites, Layer 24 Residual: $D=0.147, G=53.24\%$）との間の劇的な双方向解離**——こそが本研究の中心命題を支える主たる実証的証拠（primary evidence）である。最大解読能を示す中間層（L15 MLP）はPrompt時・Generation時を問わず局所因果レバレッジをほとんど持たない一方、強い因果レバレッジは自己報告生成直前の後段Residual Stream（L18〜L24）に時間的・空間的に解離して出現することが実証された。
 
 この知見は、古典的な representation $\neq$ use を以下の3層＋時間軸へ精緻化することを要請する：
 
@@ -238,7 +238,7 @@ $$\text{a local representation slice controls behavior}$$
 
 を明確に区別する必要性を実証する。
 
-特に、本研究ではaffective conditionが最も明確に読み取れるLayer 15 MLP（$R^2 = 0.5610$）であっても、全39組を対象としたfocused evaluationにおいてPrompt-time回復率は0.06%（全28層探索スクリーニングでも1.00%）、Generation-timeでも1.39%に留まった。
+特に、本研究ではaffective conditionが最も明確に読み取れるLayer 15 MLP（$R^2 = 0.5610$）であっても、全39組を対象としたfocused evaluationにおいてPrompt-time回復率は0.51%（全28層探索スクリーニングでも1.00%）、Generation-timeでも-0.06%に留まった。
 
 したがって、probe accuracyを用いてactivation patchingの介入位置を選択する一般的な戦略には注意が必要である。高いprobe accuracyは、
 
@@ -290,7 +290,7 @@ Cross-model mappingでも同様である。高い$R^2$、CKA、pair retrievalは
 1. **非局所的・複数層パスパッチングの未網羅**: 単一層全層スイープおよび局所ブロック置換を実施したが、非連続な疎結合回路（sparse circuit）や特定Attention Head間の相互作用パスを網羅するPath Patchingまでは実施していない。
 2. **非線形アライメントの未検証**: Base/Instruct間の表現対応づけにはRidge回帰を用いており、非線形多様体アライメントにおける幾何学的歪みの完全な解消には至っていない。
 3. **モデル規模**: 検証は1B〜1.5B規模のオープンウェイトモデル（Qwen2.5-1.5B, Llama-3.2-1B）に集中しており、7B以上の大規模モデルにおけるスケール効果の確認は将来の課題である。
-4. **因果スイープにおけるサンプル規模の制約**: 全層×3コンポーネントに及ぶ全層網羅因果スクリーニング（Joint OT、生成時パッチング、プローブ方向射影消去）は、計算コスト制約から事前に固定したテストペアのサブセット（15 pairs）を用いて評価された（*The full-layer causal sweep used a computationally constrained subset of 15 held-out matched pairs; therefore, recovery estimates should be interpreted as localization evidence rather than precise population-level effect estimates.*）。なお、代表層（L10, 14, 15, 18, 20, 24）についてはHeld-out完全一致ペア（全39組評価; Prompt有効32ペア, Generation有効39ペア）による全数コホート評価を実施し、中盤層プローブピークにおけるPrompt-time局所因果回復の低さ（~0%）および生成時における後段Residual Streamへの因果レバレッジの動的シフト（最大53.48%）を確認している（代表層には探索スクリーニング優先層が含まれるため、本全数評価は探索効果の安定化と効果量推定を目的とする）。
+4. **因果スイープにおけるサンプル規模の制約**: 全層×3コンポーネントに及ぶ全層網羅因果スクリーニング（Joint OT、生成時パッチング、プローブ方向射影消去）は、計算コスト制約から事前に固定したテストペアのサブセット（15 pairs）を用いて評価された（*The full-layer causal sweep used a computationally constrained subset of 15 held-out matched pairs; therefore, recovery estimates should be interpreted as localization evidence rather than precise population-level effect estimates.*）。なお、代表層（L10, 14, 15, 18, 20, 24）についてはHeld-out完全一致ペア（全39組評価; Prompt有効32ペア, Generation有効39ペア）による全数コホート評価を実施し、中盤層プローブピークにおけるPrompt-time局所因果回復の低さ（~0%）および生成時における後段Residual Streamへの因果レバレッジの動的シフト（最大53.24%）を確認している（代表層には探索スクリーニング優先層が含まれるため、本全数評価は探索効果の安定化と効果量推定を目的とする）。
 
 ---
 
@@ -301,9 +301,9 @@ Cross-model mappingでも同様である。高い$R^2$、CKA、pair retrievalは
 Qwen2.5-1.5Bを用いた体系的実験と、Llama-3.2-1B-Instructを用いたgeneration-time部分追試により、以下の包括的結論が得られた：
 
 1. 中間層で高いdecodabilityを示し、affective peak-versus-neutral condition の線形デコード能はMLPではLayer 15（$R^2 = 0.5610$）、AttentionではLayer 18（$R^2 = 0.5495$）、Residual streamではLayer 14（$R^2 = 0.5016$）において最大となった。
-2. しかし、同一部位の局所活性化を置換しても、自己報告分布の回復率はプロンプト時でわずか 0.06%（Layer 15 MLP）、生成時でも 1.39% に留まり、線形解読能がピークとなる部位に対する matched activation substitution は自己報告分布を実質的に回復しなかった（低局所回復）。
+2. しかし、同一部位の局所活性化を置換しても、自己報告分布の回復率はプロンプト時でわずか 0.51%（Layer 15 MLP）、生成時でも -0.06% に留まり、線形解読能がピークとなる部位に対する matched activation substitution は自己報告分布を実質的に回復しなかった（低局所回復）。
 3. 学習済みプローブ方向を除去しても系統的な中和傾向は認められず、その出力変位は直交ランダム方向の除去と統計的に区別されなかった（N=100高解像度追試で全15条件 empirical $p \ge 0.297$, BH-FDR $q = 1.000$）。
-4. 一方で、自己報告生成直前のコンテキストにおいては、後段Residual Stream（Layer 18〜24）に強い因果レバレッジが出現し、最大 53.48%（中央値 59.44%）の因果回復を達成した。
+4. 一方で、自己報告生成直前のコンテキストにおいては、後段Residual Stream（Layer 18〜24）に強い因果レバレッジが出現し、最大 53.24%（中央値 61.57%）の因果回復を達成した。
 
 総じて、本研究の最終知見は次のように集約される：
 > **Affective condition was most linearly decodable at intermediate layers, yet those same sites showed little causal recovery under matched activation substitution. Strong causal leverage instead emerged later, during report generation, particularly in the late residual stream. Probe-aligned direction removal showed no specific local necessity. Together, these results show that linear decodability identifies where information is accessible, but does not by itself identify where, when, or along which direction that information becomes causally effective.**

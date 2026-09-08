@@ -96,15 +96,18 @@ def main():
     for pid, peak_row, neut_row in valid_pairs:
         p_prompt = format_base_prompt(peak_row['text'])
         n_prompt = format_base_prompt(neut_row['text'])
-        _, tpos, _ = build_generation_prefix_inputs(tokenizer, n_prompt, PREFIX_STR, device=args.device)
-        pp_mat = compute_conditional_candidate_logprobs(model, tokenizer, p_prompt, suffixes, tpos, device=args.device)
-        pn_mat = compute_conditional_candidate_logprobs(model, tokenizer, n_prompt, suffixes, tpos, device=args.device)
+        _, p_tpos, _ = build_generation_prefix_inputs(tokenizer, p_prompt, PREFIX_STR, device=args.device)
+        _, n_tpos, _ = build_generation_prefix_inputs(tokenizer, n_prompt, PREFIX_STR, device=args.device)
+        pp_mat = compute_conditional_candidate_logprobs(model, tokenizer, p_prompt, suffixes, p_tpos, device=args.device)
+        pn_mat = compute_conditional_candidate_logprobs(model, tokenizer, n_prompt, suffixes, n_tpos, device=args.device)
         base_cache_gen[pid] = {
             "p_peak": pp_mat,
-            "p_neut": pn_mat
+            "p_neut": pn_mat,
+            "n_tpos": n_tpos
         }
 
     records = []
+    pair_level_dict = {pid: {} for pid, _, _ in valid_pairs}
 
     print("\n--- Starting Focused Evaluation Across Key Layers ---")
     for l in TARGET_LAYERS:
@@ -146,6 +149,9 @@ def main():
                 )
                 if is_valid and r_ot is not None:
                     prompt_recs.append(r_ot)
+                    pair_level_dict[pid][f"prompt_rec_L{l}_{comp}"] = r_ot * 100.0
+                else:
+                    pair_level_dict[pid][f"prompt_rec_L{l}_{comp}"] = None
                     
             mean_p_rec = float(np.mean(prompt_recs)) * 100.0 if len(prompt_recs) > 0 else 0.0
             med_p_rec = float(np.median(prompt_recs)) * 100.0 if len(prompt_recs) > 0 else 0.0
@@ -155,7 +161,7 @@ def main():
             for pid, peak_row, neut_row in valid_pairs:
                 p_prompt = format_base_prompt(peak_row['text'])
                 n_prompt = format_base_prompt(neut_row['text'])
-                _, tpos, _ = build_generation_prefix_inputs(tokenizer, n_prompt, PREFIX_STR, device=args.device)
+                tpos = base_cache_gen[pid]["n_tpos"]
                 
                 src_val, _ = extract_generation_time_activation(model, tokenizer, p_prompt, l, comp=comp, device=args.device)
                 p_hook = get_patch_hook(src_val, tpos)
@@ -168,6 +174,9 @@ def main():
                 )
                 if is_valid and r_ot is not None:
                     gen_recs.append(r_ot)
+                    pair_level_dict[pid][f"gen_rec_L{l}_{comp}"] = r_ot * 100.0
+                else:
+                    pair_level_dict[pid][f"gen_rec_L{l}_{comp}"] = None
                     
             mean_g_rec = float(np.mean(gen_recs)) * 100.0 if len(gen_recs) > 0 else 0.0
             med_g_rec = float(np.median(gen_recs)) * 100.0 if len(gen_recs) > 0 else 0.0
@@ -195,7 +204,24 @@ def main():
             os.makedirs(os.path.dirname(os.path.abspath(args.output_path)), exist_ok=True)
             pd.DataFrame(records).to_csv(args.output_path, index=False)
 
-    print(f"\nFocused 39-pair evaluation completed! Saved to {args.output_path}")
+    # Save complete pair-level table
+    pair_rows = []
+    for pid in [p[0] for p in valid_pairs]:
+        row = {"pair_id": pid}
+        row.update(pair_level_dict[pid])
+        # Add primary peak-site columns for convenience
+        row["l15_mlp_recovery"] = pair_level_dict[pid].get("gen_rec_L15_mlp", 0.0)
+        row["l24_resid_recovery"] = pair_level_dict[pid].get("gen_rec_L24_resid", 0.0)
+        if row["l15_mlp_recovery"] is not None and row["l24_resid_recovery"] is not None:
+            row["delta_g"] = row["l24_resid_recovery"] - row["l15_mlp_recovery"]
+        pair_rows.append(row)
+
+    pair_df = pd.DataFrame(pair_rows)
+    pair_output_path = args.output_path.replace(".csv", "_pair_level.csv")
+    pair_df.to_csv(pair_output_path, index=False)
+    print(f"Saved complete pair-level results to {pair_output_path}")
+
+    print(f"\nFocused 39-pair evaluation completed! Saved summary to {args.output_path}")
 
 if __name__ == "__main__":
     main()
