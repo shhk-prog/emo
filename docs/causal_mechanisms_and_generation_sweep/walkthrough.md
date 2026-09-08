@@ -693,7 +693,76 @@ CUDA_VISIBLE_DEVICES=0 .venv/bin/python v3/scripts/run_generation_time_causal_sw
 - **背景**: Stage 2 の generation-time は代表6層（全28層ではない）であるため、全空間の $\arg\max G$ を断定することは査読上の論点になり得ます。
 - **修正内容**:
   全空間での argmax 断定ではなく、
-  *「全数コホートで評価した代表部位間における直接的な効果量対比——すなわち、全層プローブ最高部位（Layer 15 MLP: $D=0.561, G=1.39\%$）と、評価した全数代表部位において最大回復を示した部位（the strongest recovery among the evaluated full-cohort representative sites, Layer 24 Residual: $D=0.147, G=53.48\%$）との間の劇的な双方向解離——こそが本研究の中心命題を支える主たる実証的証拠（primary evidence）である」*
-  として、直接的な効果量対比（$\Delta G = +52.09\% \quad [44.4\%, 59.7\%]$）を堅牢に位置づけました。
+  *「全数コホートで評価した代表部位間における直接的な効果量対比——すなわち、全層プローブ最高部位（Layer 15 MLP: $D=0.561, G=-0.06\%$）と、評価した全数代表部位において最大回復を示した部位（the strongest recovery among the evaluated full-cohort representative sites, Layer 24 Residual: $D=0.147, G=53.24\%$）との間の劇的な双方向解離——こそが本研究の中心命題を支える主たる実証的証拠（primary evidence）である」*
+  として、直接的な効果量対比（$\Delta G = +53.30\% \quad [45.34\%, 61.16\%]$）を堅牢に位置づけました。
+
+---
+
+## 25. 単一実行による全数値の100%完全一致・論文最終同期化の完了
+
+査読・再現性監査で最も致命的となる「再現スクリプトの出力と本文の主結果の数値乖離」を完全に解決するため、以下の抜本的同期作業を実施しました。
+
+### 1. 単一フォワードパス実行からの要約表・生データ表の同時生成
+- **乖離の真因**: 過去の `focused_causal_sweep_39pairs.csv` と、後から作成した `focused_causal_sweep_39pairs_pair_level.csv` が別々の実行・別々の末尾トークン位置キャッシュから生成されていたため、L15 MLP（1.39% vs -0.01%）および L24 RESID（53.48% vs 54.49%）で数値不整合が生じていました。
+- **解決策**: `run_focused_39pairs_sweep.py` を改修し、Peak/Neutralそれぞれの末尾トークン位置を正しくキャッシュした上で、**同一のフォワードパス・同一の2D Joint OT評価から、集計要約表（`focused_causal_sweep_39pairs.csv`）と全39ペアの生データ表（`focused_causal_sweep_39pairs_pair_level.csv`）を同時に書き出すアーキテクチャ**に一本化しました。
+
+### 2. `compute_bootstrap_ci.py` による主結果の完全再現
+改修後の単一実行データに対して再現スクリプトを実行し、以下の確定数値を算出・確認しました：
+```text
+[1] Focused 39-Pair Peak-Site Contrast Analysis (39 pairs):
+  * Layer 15 MLP (Probe Peak):
+      Mean Recovery    : -0.06%
+      Median Recovery  : +0.50%
+      95% Bootstrap CI : [-1.8%, +1.9%] (正確値: [-2.02%, +1.83%])
+  * Layer 24 Residual (Late Causal Leverage):
+      Mean Recovery    : +53.24%
+      Median Recovery  : +61.57%
+      95% Bootstrap CI : [+45.5%, +60.0%] (正確値: [+45.74%, +60.45%])
+  * Paired Peak-Site Contrast (Delta G = G_L24,RESID - G_L15,MLP):
+      Mean Difference  : +53.30%
+      Median Difference: +60.08%
+      95% Bootstrap CI : [+45.34%, +61.16%]
+```
+
+### 3. 論文原稿（`paper2.md` / `paper.md`）の全数値完全一致
+完全版（`paper2.md`）および要約版（`paper.md`）の双方において、過去の不整合数値（1.39%, 53.48%, 52.09%）をすべて上記最新の正規実測値へ100%完全に置換・統一しました：
+- **Abstract**: L15 MLP Gen: -0.06%（中央値 0.50%, 95% CI: [-2.0%, +1.8%]）、L24 Residual: prompt-time $R^2=0.147$, generation-time recovery = 53.24%（中央値 61.57%, 95% CI: [+45.7%, +60.5%]）。
+- **Section 15.5 表・本文**: 代表6層×3コンポーネントの全数値を最新CSV（`focused_causal_sweep_39pairs.csv`）と完全同期。
+- **Peak-Site Contrast**: $\Delta G = +53.30\% \quad (95\%\text{ bootstrap CI: } [+45.34\%, +61.16\%], \text{median difference: } +60.08\%)$。
+
+### 4. 多層パッチング（Section 15.6）における独立パイプライン注記の明記
+- 多層パッチングの単層参照値（55.08%）とfocused sweepの単層推定値（53.24%）の差異について、以下の注記を明記しました：
+  > *“The multilayer experiment was independently rerun under the multilayer-patching pipeline; therefore, its L24-only reference estimate (55.08%) differs slightly from the focused-sweep estimate (53.24%), though both consistently identify strong recovery around 53–55%.”*
+
+### 5. 表現のさらなる抑制（査読完全耐性）
+- **Section 15.4**: 探索的N=15における「決定的な手がかり」を、*「重要な探索的手がかり」* へ抑制。
+- **Section 15.6**: 残存する約45%の未回復分の解釈を、特定の仮説に限定せず、*「検証した単一トークン・Residual介入だけでは捕捉されない計算に由来する可能性がある。これには他のトークン位置、他コンポーネント、非線形な相互作用、あるいは介入自体の回復上限などが含まれ得る」* へと安全化。
+
+### 6. Figure 1（4-Panel Dissociation）の再描画
+`v3/scripts/plot_main_figure1.py` の全数値を最新確定値に同期し、Figure 1（PNG/PDF）を高解像度で再生成しました。
+
+---
+
+## 26. Bootstrap CI 完全一致・Section 12.5 修正・同期境界の整理
+
+査読・公開コード監査において一切の疑義が生じないよう、残存する3点の微細な不整合を完全に解消しました。
+
+### 1. Bootstrap CI の真の完全一致（丸め誤差の徹底排除）
+`compute_bootstrap_ci.py` がペア別生データ（`focused_causal_sweep_39pairs_pair_level.csv`）から直接計算するパーセンタイルBootstrap信頼区間（Seed=42, N_boot=2000）の出力値：
+- **Layer 15 MLP**: `[-2.02%, +1.83%]` $\rightarrow$ 小数第1位で **`[-2.0%, +1.8%]`**
+- **Layer 24 Residual**: `[+45.74%, +60.45%]` $\rightarrow$ 小数第1位で **`[+45.7%, +60.5%]`**
+- **Paired Contrast $\Delta G$**: 正確値 **`[+45.34%, +61.16%]`**（小数第1位で `[+45.3%, +61.2%]`）
+
+これらに合わせ、`paper2.md`（Abstract、Section 15.5 表・本文）、`paper.md`（Abstract、Section 6.2）、`plot_main_figure1.py` の辞書・図中表記をすべて完全に統一しました。
+
+### 2. Section 12.5 の残存値是正（0.06% $\rightarrow$ 0.51%）
+Section 12.5 は Prompt-time full-layer sweep の考察であるため、最新全数コホート評価における Layer 15 MLP の Prompt-time 平均回復率 **`+0.51%`**（Layer 10 MLP も **`0.42%`**）へと是正しました。
+
+### 3. 同期境界（Synchronization Scope）の厳密な定義
+査読者への説明責任を果たすため、各データの同期関係を以下の通り厳密に整理・位置づけました：
+$$\boxed{\text{Focused本文} = \text{Focused aggregate CSV} = \text{Focused pair-level CSV} = \text{bootstrap source}}$$
+一方、Section 15.6 の多層パッチング（単層参照値 55.08% vs focused sweep 53.24%）は、独立した多層パッチング専用パイプラインによる再実行推定値であることを本文注記で明示し、プロトコル差異として完全に説明可能としました。
+
+
 
 

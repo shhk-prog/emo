@@ -149,5 +149,7 @@
     - [x] (A) **Section 15.6 のトーン抑制**: 「加算性の棄却」「冗長伝播を証明」「支配的因果チャネルを捕捉」などの強すぎる表現を、*“consistent with substantial redundancy or saturation across late residual sites, rather than additive independent contributions”*（冗長または飽和的な因果寄与と整合する）へ修正。同一情報の再伝播・下流飽和シーリング・介入状態間依存を確定的に分離できない境界づけを明記。
     - [x] (B) **Section 15.5 の表現緩和**: 「機構に内在する堅固な構造であることを証明している」を「少数の外れ値や15-pair subset特有の標本変動だけでは説明しにくいことを示している」へ是正。
     - [x] (C) **`compute_bootstrap_ci.py` の真の再計算実装**: 単なる表示スクリプトから、ペア単位生データ（`focused_causal_sweep_39pairs_pair_level.csv`）から直接 2,000 回のブートストラップを再サンプリングし、各条件の 95% CI および Paired Peak-Site Contrast $\Delta G = +54.51\% \quad [46.97\%, 61.75\%]$（中央値差 $+60.72\%$）をミリ秒で完全再現する正規スクリプトへ改修。
-    - [x] (D) **Peak-site contrast 表現の慎重化**: Stage 2 が代表6層であることを踏まえ、全空間の $\arg\max G$ の断定を避け、「評価した全数代表部位において最大回復を示した部位（the strongest recovery among the evaluated full-cohort representative sites, L24 Residual: $D=0.147, G=53.48\%$）」と全層プローブ最高部位（L15 MLP: $D=0.561, G=1.39\%$）との直接的な効果量対比（$\Delta G = +52.09\% \quad [44.4\%, 59.7\%]$）を主証拠として記述。
-
+- [x] 27. Bootstrap CI 正確値への統一・Section 12.5 修正・同期境界の整理 <!-- id: 30 -->
+    - [x] (A) **Bootstrap CI の完全一致**: `compute_bootstrap_ci.py` の実測値に基づき、L15 MLP を `[-2.0%, +1.8%]`（正確値: `[-2.02%, +1.83%]`）、L24 RESID を `[+45.7%, +60.5%]`（正確値: `[+45.74%, +60.45%]`）、Paired Contrast を `[+45.34%, +61.16%]`（小数第1位: `[+45.3%, +61.2%]`）とし、代表層全18条件のCIを表・本文・Abstract・Figure 1 へ完全統一。
+    - [x] (B) **Section 12.5 の修正**: Prompt-time full-layer sweep の考察に残っていた古い 0.06% を、最新全数コホート確定値 0.51%（Layer 10 MLP も 0.42%）へ是正。
+    - [x] (C) **同期境界の整理**: $\boxed{\text{Focused本文} = \text{Focused aggregate CSV} = \text{Focused pair-level CSV} = \text{bootstrap source}}$ を確立し、Section 15.6 の多層パッチング（55.08% vs 53.24%）が独立再実行パイプラインによる別推定値である旨の位置づけを明確化。
