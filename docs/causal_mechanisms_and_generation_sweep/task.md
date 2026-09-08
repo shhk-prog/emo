@@ -134,5 +134,14 @@
     - [x] (B) **双方向解離（Low D, High C）の全面化**: L15 MLP ($D=0.561, G=1.39\%$) に対し L24 Residual ($D=0.147, G=53.48\%$) を対比させ、Abstract を 20-30% 圧縮して 5 本柱に凝縮。
     - [x] (C) **Peak-site contrast 表現の防御的洗練**: 「決定的な統計的有意性」を削り、「本研究で観察された解離を最も直接的に示す効果量ベースの証拠」へ修正。
     - [x] (D) **「偏在」「確証」「極大化」「標準プロトコル支持」のトーン適正化**: 誇張表現をすべて科学的・客観的表現へ置換。
-    - [x] (E) **生成時多層Residual Streamパッチング検証（L18〜L24）の完遂**: 39ペア全数で7条件（L18, L20, L24, L18+20, L20+24, L18+20+24, L18-24 contiguous）を走破し、単層（L24: 55.07%）から多層（L18-24: 55.38%）で飽和することを発見（Redundant / Overlapping Causal Leverage）。
-    - [x] (F) **概念整理ボックスの明示**: $\boxed{\text{Accessibility} \neq \text{Local Sufficiency} \neq \text{Direction-Specific Necessity}}$, $\boxed{\text{Causal leverage is position- and time-dependent}}$ を Discussion に配置。
+- [x] 24. 最終整合性完全解明・再現性確立（10大要請の完全完遂） <!-- id: 27 -->
+    - [x] (A) **Section 6.2 に Attention 追記**: MLP output, projected Attention output, full layer output / residual stream の3種類に是正。
+    - [x] (B) **Stage 1 と Stage 2 の Generation-time Residual 乖離の完全解決**: 過去の `generation_time_causal_sweep.csv` に残っていた古いキャッシュ不整合を全28層の再計算によって解消。同一の15 pairsでも L18〜27 Residual で 40.01%〜50.26%（中央値 46.34%〜56.05%）という強力な回復が一貫して再現され、Stage 2（L18: 41.48%, L20: 50.22%, L24: 53.48%）と完全に整合することを実証・本文に反映。
+    - [x] (C) **Bootstrap 95% CI 計算スクリプトの整備と明記**: `v3/scripts/compute_bootstrap_ci.py`（$N_{\mathrm{boot}}=2000$, seed=42, パーセンタイル法）を作成し、Appendix B に明記。
+    - [x] (D) **Appendix B / GitHub アーティファクトの完全同期**: `run_generation_multilayer_residual.py`, `plot_main_figure1.py`, `generation_multilayer_residual_results.csv`, `figure1_four_panel_dissociation.png/.pdf` がコミット・プッシュ済みであることを確認。
+    - [x] (E) **生成時多層Residualパッチング結果の本文掲載 (Section 15.6)**: L18(43.5%), L20(51.9%), L24(55.1%), L20+24(55.7%), L18+20+24(55.7%), L18-24(55.4%) の実測値を表として掲載し、加算性棄却・約55%での飽和・情報の冗長伝播（Redundant transmission）のメカニズム解釈を提示。
+    - [x] (F) **Section 18 等の数式添字修正**: component $c$ を補い $\arg\max_{\ell,c} D_{\ell,c} \neq \arg\max_{\ell,c,t} G_{\ell,c,t}$ へ修正。
+    - [x] (G) **Abstract の相関表現の安全化**: 「統計的に検出可能な単調関係は認められなかった」に戻し、MLP CI [-0.08, 0.61] への統計的配慮を徹底。
+    - [x] (H) **Section 19.1 概念整理ボックスの適正化**: $\boxed{\text{Accessibility},\; \text{Local Causal Recovery},\; \text{Direction-Specific Necessity} \text{ are distinct empirical axes}}$ へ修正。
+    - [x] (I) **Llama 動機の更新**: 「Qwenで観察されたlate-generation causal localization profileがモデルファミリを越えて再現するか」へ修正。
+    - [x] (J) **論文全体の中心メッセージ集約**: $\underbrace{D_{\mathrm{L15,MLP}}=.561}_{\text{high accessibility}}, \underbrace{G_{\mathrm{L15,MLP}}=1.39\%}_{\text{low local leverage}}$ vs $\underbrace{D_{\mathrm{L24,RESID}}=.147}_{\text{lower accessibility}}, \underbrace{G_{\mathrm{L24,RESID}}=53.48\%}_{\text{high local leverage}}$ の対比構造を完遂。

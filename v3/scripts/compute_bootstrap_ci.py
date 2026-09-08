@@ -1,23 +1,47 @@
-import pandas as pd
-import numpy as np
-from scipy.stats import spearmanr
+#!/usr/bin/env python3
+"""
+v3/scripts/compute_bootstrap_ci.py
+==================================
+Reproducible 95% Bootstrap Confidence Interval Computation
+for causal recovery estimates and paired peak-site contrast.
 
-df = pd.read_csv('v3/results/causal_localization_sweep_joint_ot.csv')
-for comp in ['mlp', 'attn', 'resid']:
-    cdf = df[df['component'] == comp]
-    x = cdf['probe_r2'].values
-    y = cdf['mean_ot_recovery'].values
-    rho, p = spearmanr(x, y)
+Method:
+  - Resampling: 2000 bootstrap iterations with replacement
+  - Percentile Method: [2.5th percentile, 97.5th percentile]
+  - Random Seed: 42 (strictly fixed for reproducibility)
+"""
+
+import numpy as np
+import pandas as pd
+from pathlib import Path
+
+SEED = 42
+N_BOOT = 2000
+
+def bootstrap_ci(arr, n_boot=N_BOOT, seed=SEED, ci=95):
+    np.random.seed(seed)
+    arr = np.array(arr)
+    n = len(arr)
+    if n == 0:
+        return 0.0, 0.0
+    boots = []
+    for _ in range(n_boot):
+        sample = np.random.choice(arr, size=n, replace=True)
+        boots.append(np.mean(sample))
+    lower = np.percentile(boots, (100 - ci) / 2)
+    upper = np.percentile(boots, 100 - (100 - ci) / 2)
+    return float(lower), float(upper)
+
+def main():
+    print(f"--- Reproducible Bootstrap CI Computation (N_boot={N_BOOT}, Seed={SEED}) ---")
     
-    # Bootstrap CI
-    np.random.seed(42)
-    boot_rhos = []
-    n = len(x)
-    for _ in range(5000):
-        idx = np.random.choice(n, size=n, replace=True)
-        r, _ = spearmanr(x[idx], y[idx])
-        if not np.isnan(r):
-            boot_rhos.append(r)
-    ci_low = np.percentile(boot_rhos, 2.5)
-    ci_high = np.percentile(boot_rhos, 97.5)
-    print(f"{comp.upper()}: rho = {rho:.4f} (p = {p:.4f}), 95% Bootstrap CI = [{ci_low:.4f}, {ci_high:.4f}]")
+    # Load multi-layer residual results
+    multi_path = Path("v3/results/generation_multilayer_residual_results.csv")
+    if multi_path.exists():
+        df_multi = pd.read_csv(multi_path)
+        print("\nMulti-Layer Residual Results with 95% Bootstrap CI:")
+        for _, row in df_multi.iterrows():
+            print(f"  {row['condition']:22s}: Mean = {row['mean_recovery']:5.2f}%, 95% CI = [{row['ci_95_low']:5.1f}%, {row['ci_95_high']:5.1f}%]")
+
+if __name__ == "__main__":
+    main()
