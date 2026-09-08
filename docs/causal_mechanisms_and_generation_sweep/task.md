@@ -1,4 +1,4 @@
-# タスク: 因果メカニズム検証実験の拡張実装（改訂第7版: 最終決定完全版）
+# タスク: 因果メカニズム検証実験の拡張実装（改訂第8版: 査読耐性・統計完全一致版）
 
 - [x] 1. 実装計画書（implementation_plan.md）の承認 <!-- id: 0 -->
 - [x] 2. 厳密 2D Joint OT ソルバーの実装 (`v3/src/ot_utils.py`) <!-- id: 1 -->
@@ -12,28 +12,77 @@
     - [x] Token-level prefix アライメント関数（`assert input_ids[...].tolist() == prefix_ids`）
 - [x] 4. 拡張因果実験スクリプトの実装 <!-- id: 3 -->
     - [x] (A) `run_generation_time_causal_sweep.py` 【最優先1】(Joint OT 回復率、$\epsilon_{\mathrm{rec}}$ セーフガード、`use_cache=False`) <!-- id: 4 -->
-    - [x] (B) `run_probe_aligned_necessity_sweep.py` 【最優先2】(4大操作分離、168検定BH-FDR、代表4層24検定高精度追試) <!-- id: 5 -->
+    - [x] (B) `run_probe_aligned_necessity_sweep.py` 【最優先2】(4大操作分離、全層一様N=20、84独立/168合同BH-FDR両対応) <!-- id: 5 -->
     - [x] (C) `run_causal_localization_sweep.py` の Attention 統合 【最優先3】(射影済み Attn 出力置換、Joint OT 算出、`use_cache=False`) <!-- id: 6 -->
     - [x] (D) Replication A (Llama-3.2-1B-Instruct 単体) の動作確認準備 <!-- id: 7 -->
 - [x] 5. 厳格な単体テストの実装と検証 (`v3/tests/test_causal_extensions.py`) <!-- id: 8 -->
     - [x] OT 不変量テスト（同一ゼロ、対称性）
-    - [x] **Marginal 一致・Joint 相違反例テスト** ($W_1^V + W_1^A < 10^{-6}$, $|\mathrm{OT}_{VA} - 8.0| < 10^{-5}$)
-    - [x] 人工分布での Joint OT Recovery (0.0 / 1.0) 許容誤差アサーション & $\epsilon_{\mathrm{rec}}$ ガード除外動作確認
-    - [x] Direction removal の直交性・ノルム保存 ($(h')^\top \hat{v} < 10^{-6}$, $\|h - h'\| = |h^\top \hat{v}|$)
-    - [x] 直交化ランダム方向テスト ($\hat{v}_{\perp}^\top \hat{v}_{\mathrm{probe}} < 10^{-6}$)
+    - [x] Marginal 一致・Joint 相違反例テスト
+    - [x] 人工分布での Joint OT Recovery 許容誤差アサーション & $\epsilon_{\mathrm{rec}}$ ガード除外動作確認
+    - [x] Direction removal の直交性・ノルム保存
+    - [x] 直交化ランダム方向テスト
     - [x] Identity hook 出力不変性テスト
     - [x] Token-level prefix 一致アサーション
 - [x] 6. 実行コマンドと実験プロトコルの整理・提示 <!-- id: 9 -->
 - [x] 7. 成果物のまとめ（walkthrough.md） <!-- id: 10 -->
 - [x] 8. 4大因果検証実験の全走破と実測データの集計・学術分析 <!-- id: 11 -->
     - [x] 実験 1: Generation-time sweep (Qwen2.5-1.5B, 全28層 × 3comp, 最大5.02%, 中央値0.00%)
-    - [x] 実験 2: Probe-aligned necessity sweep (Qwen2.5-1.5B, 全28層 × 3comp, 中和率0%近傍, BH-FDR有意層0/84)
+    - [x] 実験 2: Probe-aligned necessity sweep (Qwen2.5-1.5B, 全28層 × 3comp, 中和率0%近傍, BH-FDR有意層0/84, 168合同最小q=0.897)
     - [x] 実験 3: Attention統合 Prompt-time Joint OT sweep (Qwen2.5-1.5B, 全28層 × 3comp, 最大2.20%)
     - [x] 実験 4: 単体テスト全6件 PASS
-    - [x] 実験 5: Replication A (Llama-3.2-1B-Instruct, 全16層 × 3comp, 最大0.73%)
+    - [x] 実験 5: Replication A (Llama-3.2-1B-Instruct, 全16層 × 3comp, 最大0.73%, 中央値0.00%)
 - [x] 9. 論文原稿（`v3/docs/paper2.md` / `v3/docs/paper.md`）への完全統合・反映 <!-- id: 12 -->
     - [x] 4パネル統合メカニズムフレームワーク（$D_\ell, S_\ell, N_\ell, G_\ell$）の導入
     - [x] 査読者の4大反論（Necessity、Generation-time、Attention、Cross-family）に対する実証的完全論駁
     - [x] 抑制的フレーミング（Defensive Framing）の徹底と過剰主張の排除
     - [x] 再現性マッピング（スクリプト・保存先CSV）の完全同期
+- [x] 10. 査読耐性向上のための最終4点改訂と中心貢献の一文集約 <!-- id: 13 -->
+    - [x] (A) Section 12.5 と Conclusion 4 の過剰断定表現の抑制
+    - [x] (B) Llama追試の表現を cross-family partial replication へ限定
+    - [x] (C) Necessity実験のFDR記述（84独立 vs 168合同）とコード・CSVの完全整合の明記
+    - [x] (D) Experiment 2 ($R^2=0.546$) と Experiment 8 ($R^2=0.561$) の差異理由の明記
+    - [x] (E) 中心貢献の一文集約（Across all layers and three activation components...）の配置
+- [x] 11. 主張と数値の完全整合に向けた最終6点改訂 <!-- id: 14 -->
+    - [x] (A) Section 6 と Section 12 の Probe $R^2$ を $0.5610$ 正本へ一本化
+    - [x] (B) Discussion 19.1 の necessity 表現を probe-aligned local necessity へ抑制
+    - [x] (C) 「中和は一切生じず」を「系統的中和は認められず」へ修正（+0.61%実測値への配慮）
+    - [x] (D) Generation-time の pairwise median 0.00% および valid pairs (13 / 11) の明記
+    - [x] (E) Conclusion 1 等でターゲットが peak-vs-neutral condition indicator である旨を明記
+    - [x] (F) Distributed computation 推論を競合仮説との整合的解釈（consistent with）へ抑制
+    - [x] (G) 中心主張ボックスを Layerwise linear accessibility did not predict... へ洗練
+- [x] 12. 査読耐性を極限まで高めるための微細表現精緻化 <!-- id: 15 -->
+    - [x] (A) Section 6 の効果量表現修正（完全に同一 → 効果量も近い範囲にあった）
+    - [x] (B) Abstract の “no evidence for Probe-Aligned Local Necessity” への変更
+    - [x] (C) Section 16.4 の不存在断定の回避（支持する証拠は得られなかった）
+    - [x] (D) Generation-time pairwise median の定義明示（For each layer-component condition...）
+    - [x] (E) Section 19.2 の局所支配表現の緩和（強い局所的支配を示す証拠は得られなかった）
+    - [x] (F) Discussion 19.1 のタイトル修正（Decodability Does Not Identify Local Sufficiency or Probe-Aligned Local Necessity）
+- [x] 13. 査読耐性完全防御のための最終3点微修正 <!-- id: 16 -->
+    - [x] (A) Abstract/Conclusion の「Across all layers」を「at intermediate layers across all three activation components」へ限定修正（終盤層低解読能との完全整合）
+    - [x] (B) Section 18 / Section 5 の $\rho(D_\ell, S_\ell) \approx 0$ を厳密な相関係数・p値列挙および「No statistically detectable monotonic association...」へ修正（MLP $\rho=0.296$ への配慮）
+    - [x] (C) Section 18 の Boxed 命題を「High intermediate-layer decodability coexists with low local causal recovery and no evidence for probe-aligned local necessity」へ洗練
+    - [x] (D) 中心主張ボックスに「reliably」を追加し、一段具体化した要約文（Affective condition was strongly linearly accessible at intermediate layers, but...）を配置
+- [x] 14. 最終表現調整・プローブと尤度正規化の文脈切り分け <!-- id: 17 -->
+    - [x] (A) Abstract の「解離を多面的に実証し」を「解離を多面的に示し」へ緩和
+    - [x] (B) Section 18 の見出しを「Panel C: Probe-Aligned Local Necessity Test」へ修正
+    - [x] (C) Conclusion 冒頭を「線形解読能と、検証した局所介入における因果的影響力（local causal recovery）との乖離を示した」へ限定
+    - [x] (D) Section 6 / Section 6.2 のプローブ $R^2$ と sequence-likelihood length normalization の関係を整理・説明補強
+- [x] 15. 査読地雷の徹底除去（最終4点改訂） <!-- id: 18 -->
+    - [x] (A) Section 18 の冒頭を「以下の多面的な実証プロファイルとして整理できる」へ緩和（「確立される」を排除）
+    - [x] (B) Section 19.1 の表現を「プローブによって外部から線形にアクセス可能な情報」へ修正（モデル自身のアクティブアクセスとの混同を排除）
+    - [x] (C) Section 12.4 の距離表現を「本研究で検証した2種類の距離定義において」へ限定（全距離関数への過剰一般化を排除）
+    - [x] (D) Section 3.3 の 15 pairs 記述を「事前に固定した15組のペア」へ客観化し、Limitations にサンプル規模制約（localization evidence として解釈すべき旨）を明記
+- [x] 16. 査読耐性極大化（タイトル安全化・Bootstrap CI・全39ペア全数検証完了） <!-- id: 19 -->
+    - [x] (A) タイトルを `Decodability Without Strong Local Causal Leverage` へ更新
+    - [x] (B) 普遍的中心主張（Linear accessibility identifies information...）を Conclusion / Abstract に配置
+    - [x] (C) Section 15.4 / 19.2 に中央値0.00%の発生メカニズム（過半数ペアで出力変位ゼロ、IQR、positive fraction）を明記
+    - [x] (D) Section 12.3 / Section 18 / Section 5 に Spearman $\rho$ の Bootstrap 95% CI を追記
+    - [x] (E) 重要代表6層（L10, 14, 15, 18, 20, 24）の全39 pairs全数評価完了・原稿統合 (`v3/results/focused_causal_sweep_39pairs.csv`)
+- [x] 17. 高解像度必要性検定（N=100）の10〜30倍高速化実装・実測走破 (`run_focused_necessity_n100.py`) <!-- id: 20 -->
+    - [x] (A) `BatchedDirectionAblationHook` による複数ランダム方向の同時並列GPU介入実装
+    - [x] (B) 候補列81シーケンスおよびプロンプトの事前テンソル化・GPU VRAMキャッシュ（毎回のTokenize/CPU生成を完全撤廃）
+    - [x] (C) GPU上での完全ベクトル化対数尤度集計・確率分布生成（PythonループとGPUアロケーションの排除）
+    - [x] (D) テストNeutral表現の事前一括抽出と実行時進捗表示（`Pair X/15`）の実装
+    - [x] (E) N=100 高解像度追試の実行完了・実測値集計（全15条件で $p \ge 0.297$, BH-FDR $q = 1.000$）・原稿統合 (`v3/results/focused_necessity_sweep_n100.csv`)
+
 
