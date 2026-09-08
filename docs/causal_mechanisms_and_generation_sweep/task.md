@@ -84,5 +84,55 @@
     - [x] (C) GPU上での完全ベクトル化対数尤度集計・確率分布生成（PythonループとGPUアロケーションの排除）
     - [x] (D) テストNeutral表現の事前一括抽出と実行時進捗表示（`Pair X/15`）の実装
     - [x] (E) N=100 高解像度追試の実行完了・実測値集計（全15条件で $p \ge 0.297$, BH-FDR $q = 1.000$）・原稿統合 (`v3/results/focused_necessity_sweep_n100.csv`)
-
-
+- [x] 18. 論文ストーリーの根本同期・再編（Decodability Does Not Localize Causal Leverage）の完全実施 <!-- id: 21 -->
+    - [x] (A) タイトルを `Decodability Does Not Localize Causal Leverage: An Affect-Based Case Study in Language Models` へ更新
+    - [x] (B) Abstract の2段階階層化（Stage 1: 15-pair exploratory screen vs Stage 2: 39-pair confirmatory full-cohort evaluation）
+    - [x] (C) Section 15.4 / 15.5 の全面改稿（過剰主張ワード「因果的無力性」「完全確定」を完全排除、Decodability peak $\neq$ Causal leverage peak 定式化）
+    - [x] (D) Section 16.2 / 16.3 の誤記修正（Matched Neutral Replacementへ是正、FDR 168の整理、N=100高解像度追試の防御的記述）
+    - [x] (E) Section 17.3 の Llama追試解釈の客観化（Qwenの後段Residual局在化がLlama初期部分追試で再現されなかった事実とモデル依存性の提示）
+    - [x] (F) Section 18（Four-Panel Framework）の刷新（Panel D を Generation-Time Late Causal Leverage へ改訂）
+    - [x] (G) Section 19.2（反論2）の改稿（反論を退けたのではなく、生成時後段Residualで強いレバレッジが出現することを発見した構造へ）
+    - [x] (H) Section 21（Conclusion）の全面刷新（中心命題 $\boxed{\text{Linear Decodability} \not\Rightarrow \text{Causal Localization}}$）
+    - [x] (I) 要約版論文（`v3/docs/paper.md`）への同等ストーリーの完全同期
+    - [x] (J) Appendix B（Artifact Mapping）とリポジトリ上の新スクリプト・新CSV（`focused_causal_sweep_39pairs.csv` / `focused_necessity_sweep_n100.csv`）の完全整合確認
+- [x] 19. 投稿前最終洗練（査読完全耐性・用語適正化・3本柱要約版）の完了 <!-- id: 22 -->
+    - [x] (A) 「Preselected / 事前選定」の完全削除（代表6層への統一）
+    - [x] (B) Section 19.1 の回復率記述を 39-pair 値（Prompt 0.06%, Gen 1.39%）へ統一更新
+    - [x] (C) 「因果的媒介（mediation）」用語を「因果レバレッジ / 因果的影響力（causal leverage / contribution）」へ完全統一
+    - [x] (D) 「初めて動員」「物理的に移動した」表現の是正（「顕著に出現」「局所化プロファイルの移行」への適正化）
+    - [x] (E) Abstract をトップ会議水準の3本柱（高解読能・局所十分性の欠如・生成時後段Residualでの出現と特異的必要性の欠如）へ凝縮・洗練
+    - [x] (F) 要約版論文（`v3/docs/paper.md`）のクリーンUTF-8再構築と完全同期
+- [x] 20. 査読完全防御化・最終7点改訂の完了（Decodability Does Not Localize Causal Leverage） <!-- id: 23 -->
+    - [x] (A) **Causal localization と Causal leverage peak の区別**: 「真の因果メカニズムをL24 Residに局所化した」等の過剰表現を排除し、*tested local causal recovery profile shifted toward late Residual/MLP sites during report generation*（検証した局所因果回復プロファイルが、報告生成時に後段Residual/MLP部位側へ移行した）として厳密化。
+    - [x] (B) **Sufficiency 用語の是正**: 単独パッチが効かない理由に非線形相互作用や文脈依存が含まれるため、「sufficiencyの欠如」を「Prompt-Time Local Causal Recovery under Matched Substitution」および「Low Local Recovery at Highly Decodable Sites」へ是正。
+    - [x] (C) **Abstract の「直交（orthogonal）」を「解離し得る（empirically dissociable）」へ修正**: MLP $\rho=0.296$ であり数学的直交は証明していないため、*“representation accessibility and local causal leverage are empirically dissociable properties”* へ修正。
+    - [x] (D) **Section 12 の位置づけを「Exploratory」へ変更**: タイトルを `Experiment 8: Exploratory Full-Layer Causal Localization Screen` に改め、Section 12.5 に *“The full-layer sweep was designed as an exploratory localization screen rather than a precise effect-size estimation procedure. Candidate and representative layers were subsequently reevaluated on the complete held-out matched-pair cohort in Section 15.5.”* を明記し、探索的最大値（L10 MLP: +2.20%）が全数評価で消失（-0.10%）し、L15 MLPのnull（0.06%）が確定した流れを正面から記述（Winner's curse 防御）。
+    - [x] (E) **Generation-time Stage 1 (15-pair) と Stage 2 (39-pair) の差の正面扱い**: 外れ値駆動ではないことの証明（L20 Resid median 57.93%, pos 97.4%; L24 Resid median 59.44%, pos 94.9%）を明記（*Importantly, the large late-residual effects were not driven by a small number of outlying pairs. At L20 and L24, median recovery was 57.93% and 59.44%, respectively, with positive recovery in 97.4% and 94.9% of valid matched pairs.*）。
+    - [x] (F) **Section 16 の 168検定合同補正の記述削除**: 再現性地雷の完全排除（84条件直交FDRとN=100追試に一本化）。
+    - [x] (G) **「全層 q=1.000」の誤記是正**: N=100 は代表5層×3compの15条件であるため、「評価した代表15条件すべてで $q=1.000$（all 15 focused layer-component conditions had q=1.000）」へ修正。
+- [x] 21. 投稿前最終判定・査読耐性極大化改訂の完了 <!-- id: 24 -->
+    - [x] (A) **Section 2 に `2.5 Operational Definition of Local Causal Leverage` を新設**: `Causal Leverage := output sensitivity / recovery under the tested matched-substitution intervention` として厳密に操作的定義（計算の起源や必要性を意味しない旨を明記）。
+    - [x] (B) **Stage 2 の Post-selection 性質を正直かつ防御的に明記**: Section 15.5 に *“Representative layers included probe-defined layers and layers prioritized from the exploratory screen; accordingly, the full-cohort analysis is intended to stabilize effect-size estimates rather than provide selection-independent confirmatory inference.”* を追記。
+    - [x] (C) **Late Residual の 95% CI と Paired Contrast の主証拠化**: 表および本文に 95% CI を追記。さらに直接対比 $\Delta G = G_{\mathrm{L24,RESID}} - G_{\mathrm{L15,MLP}} = +52.09\%$（$95\%\mathrm{CI}: [+44.4\%, +59.7\%], p < 10^{-10}$）を提示し、Spearman相関（補助証拠）に対して Peak-site contrast を主たる実証的証拠（primary evidence）として定式化。
+    - [x] (D) **Llama追試の論理整合（反論論駁の回避）**: Section 19.2 反論4を「観察された局所化プロファイルはモデルファミリを越えて一般化するか」へ改称し、一般化しなかった事実とモデル依存性の可能性を正直に論述。
+    - [x] (E) **Section 19.2 のトーン適正化**: `Resolution of Four Major...` $\rightarrow$ `Tests of Four Major Alternative Explanations`、冒頭の「先回りして解消した」を「直接検証した」へ是正。
+    - [x] (F) **Section 18 末尾の緩和**: 「時空間的解離を確立する」 $\rightarrow$ 「時空間的解離の実証例を提供する（provides empirical evidence of a spatiotemporal dissociation in Qwen2.5-1.5B-Instruct）」。
+    - [x] (G) **Neutralization 表現の緩和**: 「復元される傾向は一切観察されなかった」 $\rightarrow$ 「系統的なNeutralizationは観察されなかった（中和比率 -3.27%〜+0.61%）」。
+    - [x] (H) **N=100 Necessity の主役転換**: 未補正の経験的 $p \ge 0.2970$（$Z_\perp \le 0.51$）を主役として先に出し、BH-FDR $q = 1.000$ を補助証拠として配置。
+    - [x] (I) **Four-Panel Framework 改称**: `Four-Panel Mechanistic Framework` $\rightarrow$ `Four-Panel Representational–Causal Profile` へ改称。
+    - [x] (J) **Section 19.1 末尾の緩和**: 「制御ノブではない」 $\rightarrow$ 「少なくとも本研究で検証した局所介入下では、自己報告出力に対する強い直接的制御ノブとして振る舞わなかった」。
+    - [x] (K) **Abstract の相関記述の限定と圧縮**: Prompt-time exploratory sweep の相関であることを明記し、Llama数値をDiscussionに委ねてコンパクト化。
+    - [x] 22. 投稿前最終4点修正・査読完全防御化（数値整合・Attentionピーク・bootstrap CI一本化・文体適正化）の完了 <!-- id: 25 -->
+    - [x] (A) **Abstract の Stage 1 / Stage 2 数値是正**: Stage 1 では L15 MLP が 1.00%、Stage 2 で 0.06%（中央値 0.07%）、Generation-time でも 1.39%（中央値 0.50%）に留まった旨を正確に記述。
+    - [x] (B) **Attention Peak (L18) との整合是正**: Abstract および Conclusion 1 において、一律の「中盤層（Layer 14-15）で極大」から「中間層で高いdecodabilityを示し、MLPではLayer 15（$R^2=0.561$）、AttentionではLayer 18（$R^2=0.550$）、Residual streamではLayer 14（$R^2=0.502$）で最大となった」へ是正。
+    - [x] (C) **Peak-site contrast $\Delta G$ の bootstrap CI 一本化**: 検定法不明の $p < 10^{-10}$ を完全に削除し、堅牢な $\Delta G = +52.09\% \quad (95\%\text{ bootstrap CI: } [+44.4\%, +59.7\%])$ に一本化。
+    - [x] (D) **Section 2.5 の形而上学フレーズの排除**: 「古典的なnecessity/sufficiencyの形而上学的断定を避け...」を「本定義は、当該部位を計算の起源・唯一の因果経路・必要条件とみなすことなく、検証した介入下での出力感受性を定量化するための操作的定義である」へ是正。
+    - [x] (E) **Section 15.5 の「確定」削除**: 「探索的に同定された効果の安定性と効果量を全Held-outコホート上で再評価・確定することを目的とする」から「確定」を削除し、「再評価することを目的とする」に統一。
+    - [x] (F) **要約版論文（`v3/docs/paper.md`）との完全同期**: Abstract, Section 6.1, Section 9 (Conclusion) すべてで同一の改訂を完全反映。
+- [x] 23. 論文中心図式・Figure 1 設計作成 & 生成時多層Residualパッチング検証の完了 <!-- id: 26 -->
+    - [x] (A) **Figure 1（4-Panel Representational–Causal Profile）の生成完了**: Panel A (Decodability), Panel B (Prompt Recovery), Panel C (Generation Recovery with Late Residual Surge), Panel D (Peak-Site Contrast L15 MLP vs L24 Residual) を統合した高品質図を出力 (`v3/results/figure1_four_panel_dissociation.png` / `.pdf`)
+    - [x] (B) **双方向解離（Low D, High C）の全面化**: L15 MLP ($D=0.561, G=1.39\%$) に対し L24 Residual ($D=0.147, G=53.48\%$) を対比させ、Abstract を 20-30% 圧縮して 5 本柱に凝縮。
+    - [x] (C) **Peak-site contrast 表現の防御的洗練**: 「決定的な統計的有意性」を削り、「本研究で観察された解離を最も直接的に示す効果量ベースの証拠」へ修正。
+    - [x] (D) **「偏在」「確証」「極大化」「標準プロトコル支持」のトーン適正化**: 誇張表現をすべて科学的・客観的表現へ置換。
+    - [x] (E) **生成時多層Residual Streamパッチング検証（L18〜L24）の完遂**: 39ペア全数で7条件（L18, L20, L24, L18+20, L20+24, L18+20+24, L18-24 contiguous）を走破し、単層（L24: 55.07%）から多層（L18-24: 55.38%）で飽和することを発見（Redundant / Overlapping Causal Leverage）。
+    - [x] (F) **概念整理ボックスの明示**: $\boxed{\text{Accessibility} \neq \text{Local Sufficiency} \neq \text{Direction-Specific Necessity}}$, $\boxed{\text{Causal leverage is position- and time-dependent}}$ を Discussion に配置。
